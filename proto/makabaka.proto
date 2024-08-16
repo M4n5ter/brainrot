@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package makabaka;
+option go_package = "./makabaka";
+
+import "google/api/annotations.proto";
+
+// User start
+message SighUpRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string avatar_url = 4;
+  string introduction = 5;
+  string profile_info = 6;  // Should be a valid JSON string
+}
+message SighUpResponse {
+  int64 user_id = 1;
+}
+message SighInRequest {
+  string email = 1;
+  string password = 2;
+}
+message SighInResponse {
+  string username = 1;
+  string avatar_url = 2;
+
+  // MAC
+  string mac_id = 3;
+  string mac_key = 4;
+  string mac_algorithm = 5;
+  string refresh_token = 6;
+}
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+message RefreshTokenResponse {
+  string mac_id = 3;
+  string mac_key = 4;
+  string mac_algorithm = 5;
+  string refresh_token = 6;
+}
+// User end
+
+// Ping start
+message PingRequest {}
+message PingResponse {}
+// Ping end
+
+service Ping {
+  // Ping is a simple health check
+  rpc Ping(PingRequest) returns (PingResponse) {
+    option (google.api.http) = {
+      get: "/v1/makabaka/ping"
+    };
+  }
+}
+
+service User {
+  // Sigh up
+  rpc SighUp(SighUpRequest) returns (SighUpResponse) {
+    option (google.api.http) = {
+      post: "/v1/makabaka/user/sigh-up"
+      body: "*"
+    };
+  }
+
+  // Sigh in
+  rpc SighIn(SighInRequest) returns (SighInResponse) {
+    option (google.api.http) = {
+      post: "/v1/makabaka/user/sigh-in"
+      body: "*"
+    };
+  }
+
+  // Refresh token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/makabaka/user/refresh-token"
+      body: "*"
+    };
+  }
+}

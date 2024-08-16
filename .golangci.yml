@@ -1,0 +1,123 @@
+linters:
+  enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - copyloopvar
+    # - deadcode # deprecated - https://github.com/golangci/golangci-lint/issues/1841
+    - depguard
+    - dupl
+    - errcheck
+    - errchkjson
+    - errorlint
+    - forbidigo
+    - gocritic
+    # - gocyclo # The cyclomatic complexety of a lot of functions is too high, we should refactor those another time.
+    - gofmt
+    - gofumpt
+    - gosimple
+    - govet
+    - ineffassign
+    - nakedret
+    - nolintlint
+    - revive
+    - staticcheck
+    # - structcheck # deprecated - https://github.com/golangci/golangci-lint/issues/1841
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unused
+    # - varcheck # deprecated - https://github.com/golangci/golangci-lint/issues/1841
+    - wastedassign
+  enable-all: false
+  disable-all: true
+  fast: false
+
+run:
+  timeout: 10m
+
+linters-settings:
+  stylecheck:
+    checks: ["all", "-ST1005", "-ST1003"]
+  nakedret:
+    max-func-lines: 0
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch # Every time this occurred in the code, there was no other way.
+  revive:
+    ignore-generated-header: false
+    severity: warning
+    confidence: 0.8
+    errorCode: 1
+    warningCode: 1
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-naming
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+      - name: duplicated-imports
+      - name: modifies-value-receiver
+  # gofumpt:
+  #   extra-rules: true  # VSCode team doesn't like this rule, they don't provide a option to enable this flag.
+  depguard:
+    rules:
+      # main rule
+      main:
+        deny:
+          - pkg: io/ioutil
+            desc: use os or io instead
+          - pkg: golang.org/x/exp
+            desc: it's experimental and unreliable
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-dirs:
+    - node_modules
+    - public
+    - web_src
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - unparam
+        - staticcheck
+    - linters:
+        - dupl
+      text: "webhook"
+    - linters:
+        - gocritic
+      text: "`ID' should not be capitalized"
+    - linters:
+        - unused
+        - deadcode
+      text: "swagger"
+    - linters:
+        - gofumpt
+      source: "^func String\\(key string, v string\\) Attr"
+    - linters:
+        - error-naming
+      text: "ErrFoo"
+    - linters:
+        - unused
+      text: "logLevel"
