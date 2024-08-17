@@ -7,6 +7,7 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/m4n5ter/makabaka/model"
 	"github.com/m4n5ter/makabaka/pb/makabaka"
+	"github.com/m4n5ter/makabaka/pkg/util/validator"
 	"github.com/m4n5ter/makabaka/rpc/makabaka/internal/svc"
 	usermodule "github.com/m4n5ter/makabaka/rpc/makabaka/internal/svc/module/user"
 
@@ -34,8 +35,12 @@ func (l *SighUpLogic) SighUp(in *makabaka.SighUpRequest) (*makabaka.SighUpRespon
 		return nil, fmt.Errorf("缺少用户名/邮箱/密码: %w", usermodule.ErrLackNecessaryField)
 	}
 
+	if !validator.IsEmail(in.Email) {
+		return nil, usermodule.ErrInvalidInput.Wrap("邮箱格式不合法")
+	}
+
 	if in.ProfileInfo != "" {
-		// TODO: 恶意构造巨大的 ProfileInfo 会导致问题
+		// TODO: 恶意构造巨大的 ProfileInfo 会导致问题。也许应该在 api 网关处理
 		var pi map[string]any
 		if err := jsonx.UnmarshalFromString(in.ProfileInfo, pi); err != nil {
 			return nil, usermodule.ErrInvalidInput.Wrap("ProfileInfo 不是合法 JSON 字符串")

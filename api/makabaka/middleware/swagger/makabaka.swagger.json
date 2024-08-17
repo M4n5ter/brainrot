@@ -1,0 +1,531 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Makabaka API",
+    "description": "M4n5ter 的笔记服务",
+    "version": "v1.0",
+    "contact": {
+      "name": "M4n5ter",
+      "url": "https://github.com/M4n5ter",
+      "email": "m4n5terrr@gmail.com"
+    },
+    "license": {
+      "name": "未开智选手 License",
+      "url": "https://t.me/M4n5ter"
+    }
+  },
+  "tags": [
+    {
+      "name": "Ping"
+    },
+    {
+      "name": "User"
+    },
+    {
+      "name": "Article"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/v1/makabaka/article/delete": {
+      "post": {
+        "summary": "删除一篇文章",
+        "operationId": "Article_DeleteArticle",
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteArticleResponse"
+            }
+          },
+          "422": {
+            "description": "客户端错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteArticleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Article"
+        ]
+      }
+    },
+    "/v1/makabaka/article/post": {
+      "post": {
+        "summary": "发布一篇文章",
+        "operationId": "Article_PostArticle",
+        "responses": {
+          "200": {
+            "description": "发布成功",
+            "schema": {
+              "$ref": "#/definitions/v1PostArticleResponse"
+            }
+          },
+          "422": {
+            "description": "客户端错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PostArticleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Article"
+        ]
+      }
+    },
+    "/v1/makabaka/ping": {
+      "get": {
+        "summary": "Ping is a simple health check",
+        "operationId": "Ping_Ping",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v1PingResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "Ping"
+        ]
+      }
+    },
+    "/v1/makabaka/user/refresh-token": {
+      "post": {
+        "summary": "刷新令牌",
+        "operationId": "User_RefreshToken",
+        "responses": {
+          "200": {
+            "description": "刷新令牌成功",
+            "schema": {
+              "$ref": "#/definitions/v1RefreshTokenResponse"
+            }
+          },
+          "422": {
+            "description": "客户端错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "刷新令牌请求体",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1RefreshTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/v1/makabaka/user/sigh-in": {
+      "post": {
+        "summary": "用户登录",
+        "operationId": "User_SighIn",
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "schema": {
+              "$ref": "#/definitions/v1SighInResponse"
+            }
+          },
+          "422": {
+            "description": "客户端错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "用户登录请求体",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SighInRequest"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/v1/makabaka/user/sigh-up": {
+      "post": {
+        "summary": "将一个用户注册到数据库",
+        "operationId": "User_SighUp",
+        "responses": {
+          "200": {
+            "description": "注册成功",
+            "schema": {
+              "$ref": "#/definitions/v1SighUpResponse"
+            }
+          },
+          "422": {
+            "description": "客户端错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "schema": {
+              "$ref": "#/definitions/v1Error"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "用户注册请求体",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SighUpRequest"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "@type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1DeleteArticleRequest": {
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1DeleteArticleResponse": {
+      "type": "object"
+    },
+    "v1Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "title": "API error"
+    },
+    "v1PingResponse": {
+      "type": "object"
+    },
+    "v1PostArticleRequest": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v1PostArticleResponse": {
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
+    "v1RefreshTokenRequest": {
+      "type": "object",
+      "format": "object",
+      "properties": {
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "description": "刷新令牌请求体",
+      "required": [
+        "refreshToken"
+      ]
+    },
+    "v1RefreshTokenResponse": {
+      "type": "object",
+      "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "mac_id": "mac_id",
+          "mac_key": "mac_key",
+          "mac_algorithm": "mac_algorithm",
+          "refresh_token": "refresh_token"
+        }
+      },
+      "properties": {
+        "macId": {
+          "type": "string"
+        },
+        "macKey": {
+          "type": "string"
+        },
+        "macAlgorithm": {
+          "type": "string"
+        },
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "description": "刷新令牌响应体"
+    },
+    "v1SighInRequest": {
+      "type": "object",
+      "format": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        }
+      },
+      "description": "用户登录请求体",
+      "required": [
+        "email",
+        "password"
+      ]
+    },
+    "v1SighInResponse": {
+      "type": "object",
+      "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "username": "m4n5ter",
+          "avatar_url": "https://example.com/avatar.jpg",
+          "mac_id": "mac_id",
+          "mac_key": "mac_key",
+          "mac_algorithm": "mac_algorithm",
+          "refresh_token": "refresh_token"
+        }
+      },
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "macId": {
+          "type": "string"
+        },
+        "macKey": {
+          "type": "string"
+        },
+        "macAlgorithm": {
+          "type": "string"
+        },
+        "refreshToken": {
+          "type": "string"
+        }
+      },
+      "description": "用户登录响应体"
+    },
+    "v1SighUpRequest": {
+      "type": "object",
+      "format": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "introduction": {
+          "type": "string"
+        },
+        "profileInfo": {
+          "type": "string",
+          "title": "Should be a valid JSON string"
+        }
+      },
+      "description": "用户注册请求体",
+      "required": [
+        "username",
+        "email",
+        "password"
+      ]
+    },
+    "v1SighUpResponse": {
+      "type": "object",
+      "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "user_id": 1
+        }
+      },
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "int64"
+        }
+      },
+      "description": "用户注册响应体"
+    }
+  },
+  "securityDefinitions": {
+    "makabaka security": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "scopes": {
+        "R": "只读",
+        "RW": "读写",
+        "W": "只写"
+      }
+    }
+  }
+}

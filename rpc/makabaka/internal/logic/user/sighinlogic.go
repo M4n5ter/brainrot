@@ -5,6 +5,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/m4n5ter/makabaka/pb/makabaka"
+	"github.com/m4n5ter/makabaka/pkg/util/validator"
 	"github.com/m4n5ter/makabaka/rpc/makabaka/internal/svc"
 	usermodule "github.com/m4n5ter/makabaka/rpc/makabaka/internal/svc/module/user"
 
@@ -29,6 +30,10 @@ func NewSighInLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SighInLogi
 func (l *SighInLogic) SighIn(in *makabaka.SighInRequest) (*makabaka.SighInResponse, error) {
 	if in.Email == "" || in.Password == "" {
 		return nil, usermodule.ErrLackNecessaryField.Wrap("邮箱或密码为空")
+	}
+
+	if !validator.IsEmail(in.Email) {
+		return nil, usermodule.ErrInvalidInput.Wrap("邮箱格式不合法")
 	}
 
 	usermodel, err := l.svcCtx.UserModel.FindOneByEmail(l.ctx, in.Email)

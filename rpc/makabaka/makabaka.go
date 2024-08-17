@@ -7,6 +7,7 @@ import (
 	unaryserverinterceptors "github.com/m4n5ter/makabaka/pkg/grpcinterceptor"
 	"github.com/m4n5ter/makabaka/pkg/grpcinterceptor/auth"
 	"github.com/m4n5ter/makabaka/rpc/makabaka/internal/config"
+	articleServer "github.com/m4n5ter/makabaka/rpc/makabaka/internal/server/article"
 	pingServer "github.com/m4n5ter/makabaka/rpc/makabaka/internal/server/ping"
 	userServer "github.com/m4n5ter/makabaka/rpc/makabaka/internal/server/user"
 	"github.com/m4n5ter/makabaka/rpc/makabaka/internal/svc"
@@ -32,6 +33,7 @@ func main() {
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
 		makabaka.RegisterPingServer(grpcServer, pingServer.NewPingServer(ctx))
 		makabaka.RegisterUserServer(grpcServer, userServer.NewUserServer(ctx))
+		makabaka.RegisterArticleServer(grpcServer, articleServer.NewArticleServer(ctx))
 
 		if c.Mode == service.DevMode || c.Mode == service.TestMode {
 			reflection.Register(grpcServer)

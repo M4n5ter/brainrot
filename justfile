@@ -49,7 +49,8 @@ input 'Y/N' to continue or exit.
 """)]
 [group('generate')]
 genrpc target:
-    @goctl rpc protoc --multiple --home {{ join(root, ".goctl") }} {{ join(proto, target) }}.proto -I . -I {{ proto }} --go_out={{ pb }} --go-grpc_out={{ pb }} --zrpc_out={{ join(rpc, target) }} {{ and }} protoc -I . -I {{ proto }} --grpc-gateway_out={{ pb }} {{ join(proto, target) }}.proto
+    @goctl rpc protoc --multiple --home {{ join(root, ".goctl") }} {{ join(proto, target) }}.proto -I . -I {{ proto }} --go_out={{ pb }} --go-grpc_out={{ pb }} --zrpc_out={{ join(rpc, target) }}
+    @protoc -I . -I {{ proto }} --grpc-gateway_out={{ pb }} --openapiv2_out={{openapi}} {{ join(proto, target) }}.proto
 
 # generate model code. e.g., just genmodel user makabaka - 生成 model 代码
 [confirm("""
@@ -99,7 +100,7 @@ dep-goctl:
 # this can install protoc, protoc-gen-go, protoc-gen-go-grpc at once - 这个命令可以一次性安装 protoc, protoc-gen-go, protoc-gen-go-grpc
 [group('dependencies')]
 dep-goctl-env:
-    @goctl env check --install --verbose
+    @goctl env check --install --force --verbose
 
 # open browser and visit https://grpc.io/docs/protoc-installation/ - 打开浏览器访问 https://grpc.io/docs/protoc-installation/
 [group('dependencies')]
@@ -119,6 +120,10 @@ dep-protoc-gen-go-grpc:
 dep-protoc-gen-grpc-gateway:
     @go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway@latest
 
+[group('dependencies')]
+dep-protoc-gen-openapiv2:
+    @go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+
 #===================================== targets end ===========================================#
 #=================================== variables start =========================================#
 # project name - 项目名称
@@ -132,5 +137,6 @@ api := join(root, "api")
 rpc := join(root, "rpc")
 proto := join(root, "proto")
 pb := join(root, "pb")
+openapi := join(api, project_name, "middleware", "swagger")
 
 #=================================== variables end =========================================#

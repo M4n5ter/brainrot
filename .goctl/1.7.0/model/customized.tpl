@@ -2,11 +2,11 @@
 
 type extended{{.upperStartCamelObject}}Model interface {
     Trans(ctx context.Context,fn func(context context.Context,session sqlx.Session) error) error
-    FindPageListByIdDESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
-    FindPageListByIdASC(ctx context.Context, preMaxID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
+    FindPageListBy{{.upperStartCamelPrimaryKey}}DESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
+    FindPageListBy{{.upperStartCamelPrimaryKey}}ASC(ctx context.Context, preMaxID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
 }
 
-func (m *default{{.upperStartCamelObject}}Model) FindPageListByIdDESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
+func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCamelPrimaryKey}}DESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
 	args := []any{}
 	where := " "
 	
@@ -30,7 +30,7 @@ func (m *default{{.upperStartCamelObject}}Model) FindPageListByIdDESC(ctx contex
 	}
 }
 
-func (m *default{{.upperStartCamelObject}}Model) FindPageListByIdASC(ctx context.Context, preMaxID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
+func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCamelPrimaryKey}}ASC(ctx context.Context, preMaxID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
 	args := []any{}
 	where := " "
 	

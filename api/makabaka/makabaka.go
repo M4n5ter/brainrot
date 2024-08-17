@@ -12,7 +12,9 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/idempotency"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/m4n5ter/makabaka/api/makabaka/gatewayoption"
+	"github.com/m4n5ter/makabaka/api/makabaka/middleware/swagger"
 	"github.com/m4n5ter/makabaka/pb/makabaka"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -42,9 +44,14 @@ func main() {
 
 	log.Printf("Starting gateway server at %s...\n", "8090")
 	gwApp := fiber.New()
-	gwApp.All("*", adaptor.HTTPHandler(gwmux))
 
-	gwApp.Use(compress.New(), helmet.New(), idempotency.New(), etag.New())
+	gwApp.Use(compress.New())
+	gwApp.Use(helmet.New())
+	gwApp.Use(idempotency.New())
+	gwApp.Use(etag.New())
+	gwApp.Use(swagger.New())
+
+	gwApp.All("/*", adaptor.HTTPHandler(gwmux))
 
 	if err := gwApp.Listen(":8090"); err != nil {
 		log.Println(err)

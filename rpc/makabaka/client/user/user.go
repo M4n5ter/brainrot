@@ -13,14 +13,19 @@ import (
 )
 
 type (
-	PingRequest          = makabaka.PingRequest
-	PingResponse         = makabaka.PingResponse
-	RefreshTokenRequest  = makabaka.RefreshTokenRequest
-	RefreshTokenResponse = makabaka.RefreshTokenResponse
-	SighInRequest        = makabaka.SighInRequest
-	SighInResponse       = makabaka.SighInResponse
-	SighUpRequest        = makabaka.SighUpRequest
-	SighUpResponse       = makabaka.SighUpResponse
+	DeleteArticleRequest  = makabaka.DeleteArticleRequest
+	DeleteArticleResponse = makabaka.DeleteArticleResponse
+	Error                 = makabaka.Error
+	PingRequest           = makabaka.PingRequest
+	PingResponse          = makabaka.PingResponse
+	PostArticleRequest    = makabaka.PostArticleRequest
+	PostArticleResponse   = makabaka.PostArticleResponse
+	RefreshTokenRequest   = makabaka.RefreshTokenRequest
+	RefreshTokenResponse  = makabaka.RefreshTokenResponse
+	SighInRequest         = makabaka.SighInRequest
+	SighInResponse        = makabaka.SighInResponse
+	SighUpRequest         = makabaka.SighUpRequest
+	SighUpResponse        = makabaka.SighUpResponse
 
 	User interface {
 		// Sigh up
