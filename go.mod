@@ -1,4 +1,4 @@
-module github.com/m4n5ter/makabaka
+module github.com/m4n5ter/brainrot
 
 go 1.23.0
 

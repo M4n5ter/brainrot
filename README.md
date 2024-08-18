@@ -1,4 +1,4 @@
-# Makabaka
+# brainrot
 
 ## Requires
 

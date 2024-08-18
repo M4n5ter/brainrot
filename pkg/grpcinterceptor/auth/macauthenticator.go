@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m4n5ter/makabaka/pkg/mac"
+	"github.com/m4n5ter/brainrot/pkg/mac"
 	"github.com/zeromicro/go-zero/core/collection"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"google.golang.org/grpc/codes"

@@ -1,0 +1,289 @@
+syntax = "proto3";
+
+package brainrot.v1;
+
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "./brainrot";
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+  info: {
+    title: "brainrot API"
+    version: "v1.0"
+    description: "M4n5ter's brain rot time project"
+    contact: {
+      name: "M4n5ter"
+      url: "https://github.com/M4n5ter"
+      email: "m4n5terrr@gmail.com"
+    }
+    license: {
+      name: "未开智选手 License"
+      url: "https://t.me/M4n5ter"
+    }
+  }
+  schemes: [
+    HTTP,
+    HTTPS
+  ]
+  consumes: "application/json"
+  produces: "application/json"
+  security_definitions: {
+    security: {
+      key: "brainrot security"
+      value: {
+        type: TYPE_OAUTH2
+        flow: FLOW_ACCESS_CODE
+        scopes: {
+          scope: [
+            {
+              key: "RW"
+              value: "读写"
+            },
+            {
+              key: "R"
+              value: "只读"
+            },
+            {
+              key: "W"
+              value: "只写"
+            }
+          ]
+        }
+      }
+    }
+  }
+};
+
+// User start
+
+message SighUpRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string avatar_url = 4;
+  string introduction = 5;
+  string profile_info = 6; // Should be a valid JSON string
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "用户注册请求体"
+      required: [
+        "username",
+        "email",
+        "password"
+      ]
+    }
+  };
+}
+message SighUpResponse {
+  int64 user_id = 1;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "用户注册响应体"
+      example: '{"code": 0, "message": "ok", "data": {"user_id": 1}}'
+    }
+  };
+}
+message SighInRequest {
+  string email = 1;
+  string password = 2;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "用户登录请求体"
+      required: [
+        "email",
+        "password"
+      ]
+    }
+  };
+}
+message SighInResponse {
+  string username = 1;
+  string avatar_url = 2;
+  string mac_id = 3;
+  string mac_key = 4;
+  string mac_algorithm = 5;
+  string refresh_token = 6;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "用户登录响应体"
+      example: '{"code": 0, "message": "ok", "data": {"username": "m4n5ter", "avatar_url": "https://example.com/avatar.jpg", "mac_id": "mac_id", "mac_key": "mac_key", "mac_algorithm": "mac_algorithm", "refresh_token": "refresh_token"}}'
+    }
+  };
+}
+message RefreshTokenRequest {
+  string refresh_token = 1;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "刷新令牌请求体"
+      required: ["refresh_token"]
+    }
+  };
+}
+message RefreshTokenResponse {
+  string mac_id = 3;
+  string mac_key = 4;
+  string mac_algorithm = 5;
+  string refresh_token = 6;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "刷新令牌响应体"
+      example: '{"code": 0, "message": "ok", "data": {"mac_id": "mac_id", "mac_key": "mac_key", "mac_algorithm": "mac_algorithm", "refresh_token": "refresh_token"}}'
+    }
+  };
+}
+// User end
+
+// Article start
+
+message PostArticleRequest {
+  string title = 1;
+  string content = 2;
+  repeated string tags = 3;
+}
+message PostArticleResponse {
+  int64 article_id = 1;
+}
+message DeleteArticleRequest {
+  int64 article_id = 1;
+}
+message DeleteArticleResponse {}
+// Article end
+
+// Ping start
+
+message PingRequest {}
+message PingResponse {}
+// Ping end
+
+// API error
+message Error {
+  int32 code = 1;
+  string message = 2;
+}
+
+service Ping {
+  // Ping is a simple health check
+  rpc Ping(PingRequest) returns (PingResponse) {
+    option (google.api.http) = {get: "/v1/brainrot/ping"};
+  }
+}
+
+service User {
+  // Sigh up
+  rpc SighUp(SighUpRequest) returns (SighUpResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/user/sigh-up"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "将一个用户注册到数据库"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "注册成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.SighUpResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Sigh in
+  rpc SighIn(SighInRequest) returns (SighInResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/user/sigh-in"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "用户登录"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "登录成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.SighInResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Refresh token
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/user/refresh-token"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "刷新令牌"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "刷新令牌成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.RefreshTokenResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+}
+
+service Article {
+  // Post article
+  rpc PostArticle(PostArticleRequest) returns (PostArticleResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/article/post"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "发布一篇文章"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "发布成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.PostArticleResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Delete article
+  rpc DeleteArticle(DeleteArticleRequest) returns (DeleteArticleResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/article/delete"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除一篇文章"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "删除成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.DeleteArticleResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+}

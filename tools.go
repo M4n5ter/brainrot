@@ -9,7 +9,7 @@
 //go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
 
 // https://go.dev/wiki/Modules#how-can-i-track-tool-dependencies-for-a-module
-package makabaka
+package brainrot
 
 import (
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"

@@ -35,12 +35,12 @@ alias deps := dependencies
 # default target, excute lint and test - `just` 默认目标，执行代码检查和测试
 default: lint test
 
-# build e.g., just build rpc makabaka - 构建
+# build e.g., just build rpc brainrot - 构建
 [group('build')]
-build target="rpc" proj_name="makabaka":
+build target="rpc" proj_name="brainrot":
     @cd {{ if target == "rpc" { target } else { if target == "api" { target } else { "rpc" } } }} {{ and }} cd {{ proj_name }} {{ and }} go build -ldflags "-s -w" .
 
-# generate rpc code. e.g., just genrpc makabaka - 生成 rpc 代码
+# generate rpc code. e.g., just genrpc brainrot - 生成 rpc 代码
 [confirm("""
 Are you sure you want to generate go-zero's rpc and grpc-gateway code?
 你确定要生成 go-zero rpc 和 grpc-gateway 代码吗？
@@ -52,7 +52,7 @@ genrpc target:
     @goctl rpc protoc --multiple --home {{ join(root, ".goctl") }} {{ join(proto, target) }}.proto -I . -I {{ proto }} --go_out={{ pb }} --go-grpc_out={{ pb }} --zrpc_out={{ join(rpc, target) }}
     @protoc -I . -I {{ proto }} --grpc-gateway_out={{ pb }} --openapiv2_out={{openapi}} {{ join(proto, target) }}.proto
 
-# generate model code. e.g., just genmodel user makabaka - 生成 model 代码
+# generate model code. e.g., just genmodel user brainrot - 生成 model 代码
 [confirm("""
 Are you sure you want to generate go-zero model code?
 你确定要生成 go-zero model 代码吗？
@@ -60,12 +60,12 @@ input 'Y/N' to continue or exit.
 输入 'Y/N' 继续或退出。
 """)]
 [group('generate')]
-genmodel sql_name target="makabaka" *args="":
+genmodel sql_name target="brainrot" *args="":
     @goctl model mysql ddl --home {{ join(root, ".goctl") }} {{ args }} --strict --dir model --src {{ join(root, "sql", target, sql_name) }}.sql
 
-# run e.g., just run rpc makabaka - 运行
+# run e.g., just run rpc brainrot - 运行
 [group('dev')]
-run target="rpc" proj_name="makabaka":
+run target="rpc" proj_name="brainrot":
     @cd {{ if target == "rpc" { target } else { if target == "api" { target } else { "rpc" } } }} {{ and }} cd {{ proj_name }} {{ and }} go run .
 
 # go test
@@ -128,7 +128,7 @@ dep-protoc-gen-openapiv2:
 #=================================== variables start =========================================#
 # project name - 项目名称
 
-project_name := "makabaka"
+project_name := "brainrot"
 
 # project root directory - 项目根目录
 

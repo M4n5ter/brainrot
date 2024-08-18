@@ -11,8 +11,8 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/m4n5ter/makabaka/pkg/grpcinterceptor/auth"
-	"github.com/m4n5ter/makabaka/pkg/merror"
+	"github.com/m4n5ter/brainrot/pkg/grpcinterceptor/auth"
+	"github.com/m4n5ter/brainrot/pkg/merror"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 

@@ -16,7 +16,7 @@ type AES[D any] struct {
 }
 
 func NewAES[D any](secret string) *AES[D] {
-	return &AES[D]{secret: ToMakabakaBytes(secret)}
+	return &AES[D]{secret: TobrainrotBytes(secret)}
 }
 
 func (a *AES[D]) Encrypt(data D) (string, error) {
