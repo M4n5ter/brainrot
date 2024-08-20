@@ -1,4 +1,4 @@
-package auth
+package mac
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"brainrot/pkg/grpcinterceptor/auth"
 	"brainrot/pkg/mac"
 
 	"github.com/zeromicro/go-zero/core/collection"
@@ -17,19 +18,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
-)
-
-const (
-	defaultExpiration    = 5 * time.Minute
-	missingMetadata      = "missing metadata"
-	invalidAuthorization = "invalid authorization"
-)
-
-const (
-	httpMethod   = "m-http-method"
-	httpURL      = "m-http-url"
-	httpHostname = "m-http-hostname"
-	httpPort     = "m-http-port"
 )
 
 // An Authenticator is used to authenticate the rpc requests.
@@ -43,7 +31,7 @@ type Authenticator struct {
 
 // NewAuthenticator returns an Authenticator.
 func NewAuthenticator(store *redis.Redis, keyPrefix string, strict bool, whitelist []string) (*Authenticator, error) {
-	cache, err := collection.NewCache(defaultExpiration)
+	cache, err := collection.NewCache(auth.DefaultExpiration)
 	if err != nil {
 		return nil, err
 	}
@@ -61,19 +49,19 @@ func NewAuthenticator(store *redis.Redis, keyPrefix string, strict bool, whiteli
 func (a *Authenticator) Authenticate(ctx context.Context) (metadata.MD, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, auth.MissingMetadata)
 	}
 
-	methods, urls, hostnames, ports := md[httpMethod], md[httpURL], md[httpHostname], md[httpPort]
+	methods, urls, hostnames, ports := md[auth.HTTPMethod], md[auth.HTTPURL], md[auth.HTTPHostname], md[auth.HTTPPort]
 
 	if len(methods) == 0 || len(urls) == 0 || len(hostnames) == 0 || len(ports) == 0 {
-		return nil, status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, auth.MissingMetadata)
 	}
 
 	method, url, hostname, port := methods[0], urls[0], hostnames[0], ports[0]
 
 	if len(method) == 0 || len(url) == 0 || len(hostname) == 0 || len(port) == 0 {
-		return nil, status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, auth.MissingMetadata)
 	}
 
 	// 如果在白名单中，直接通过
@@ -85,7 +73,7 @@ func (a *Authenticator) Authenticate(ctx context.Context) (metadata.MD, error) {
 
 	tokens := md.Get("authorization")
 	if len(tokens) == 0 {
-		return nil, status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, auth.MissingMetadata)
 	}
 
 	token := tokens[0]
@@ -97,14 +85,14 @@ func (a *Authenticator) Authenticate(ctx context.Context) (metadata.MD, error) {
 	parts := strings.Split(token[len("MAC "):], ",")
 	// The count of header attributes must be 4 or 5.
 	if len(parts) != 4 && len(parts) != 5 {
-		return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
+		return nil, status.Error(codes.Unauthenticated, auth.InvalidAuthorization)
 	}
 
 	for _, part := range parts {
 		trimed := strings.TrimSpace(part)
 		i := strings.Index(trimed, "=")
 		if i == -1 {
-			return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
+			return nil, status.Error(codes.Unauthenticated, auth.InvalidAuthorization)
 		}
 		k, v := trimed[:i], strings.TrimFunc(trimed[i+1:], func(r rune) bool {
 			return r == '"'
@@ -122,12 +110,12 @@ func (a *Authenticator) Authenticate(ctx context.Context) (metadata.MD, error) {
 		case "mac":
 			macstr = v
 		default:
-			return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
+			return nil, status.Error(codes.Unauthenticated, auth.InvalidAuthorization)
 		}
 	}
 
 	if len(id) == 0 || len(ts) == 0 || len(nonce) == 0 || len(macstr) == 0 {
-		return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
+		return nil, status.Error(codes.Unauthenticated, auth.InvalidAuthorization)
 	}
 
 	userid, err := a.validate(mac.NewRequest(

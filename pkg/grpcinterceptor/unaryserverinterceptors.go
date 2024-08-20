@@ -44,7 +44,7 @@ func ErrorToStatusInterceptor(ctx context.Context, req any, info *grpc.UnaryServ
 	return resp, err
 }
 
-func OAuth2MACAuthorizeInterceptor(authenticator *auth.Authenticator) grpc.UnaryServerInterceptor {
+func OAuth2AuthorizeInterceptor(authenticator auth.Authenticator) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {

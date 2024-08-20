@@ -12,6 +12,7 @@ import (
 	"brainrot/rpc/brainrot/internal/config"
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
 
+	"github.com/meilisearch/meilisearch-go"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -21,6 +22,7 @@ type ServiceContext struct {
 	UserModel    model.UserModel
 	ArticleModel model.ArticleModel
 	Redis        *redis.Redis
+	Meili        *meilisearch.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
@@ -33,6 +35,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 			r.Type = c.Redis.Type
 			r.Pass = c.Redis.Pass
 		}),
+		Meili: meilisearch.NewClient(meilisearch.ClientConfig{Host: c.Meilisearch.Host, APIKey: c.Meilisearch.APIKey}),
 	}
 }
 

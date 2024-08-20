@@ -5,7 +5,8 @@ import (
 
 	"brainrot/gen/pb/brainrot"
 	unaryserverinterceptors "brainrot/pkg/grpcinterceptor"
-	"brainrot/pkg/grpcinterceptor/auth"
+	"brainrot/pkg/grpcinterceptor/auth/apikey"
+	"brainrot/pkg/grpcinterceptor/auth/mac"
 	"brainrot/rpc/brainrot/internal/config"
 	articleServer "brainrot/rpc/brainrot/internal/server/article"
 	pingServer "brainrot/rpc/brainrot/internal/server/ping"
@@ -41,14 +42,28 @@ func main() {
 	})
 	s.AddUnaryInterceptors(unaryserverinterceptors.ErrorToStatusInterceptor)
 	if c.MAC.Strategy.Enable {
-		s.AddUnaryInterceptors(unaryserverinterceptors.OAuth2MACAuthorizeInterceptor(
-			func() *auth.Authenticator {
-				authenticator, err := auth.NewAuthenticator(
+		s.AddUnaryInterceptors(unaryserverinterceptors.OAuth2AuthorizeInterceptor(
+			func() *mac.Authenticator {
+				authenticator, err := mac.NewAuthenticator(
 					func() *redis.Redis {
 						red, err := redis.NewRedis(c.Redis.RedisConf)
 						logx.Must(err)
 						return red
 					}(), c.MAC.KeyPrefix, true, c.MAC.Strategy.Whitelist,
+				)
+				logx.Must(err)
+				return authenticator
+			}(),
+		))
+	} else if c.APIKey.Strategy.Enable {
+		s.AddUnaryInterceptors(unaryserverinterceptors.OAuth2AuthorizeInterceptor(
+			func() *apikey.Authenticator {
+				authenticator, err := apikey.NewAuthenticator(
+					func() *redis.Redis {
+						red, err := redis.NewRedis(c.Redis.RedisConf)
+						logx.Must(err)
+						return red
+					}(), c.APIKey.KeyPrefix, true, c.APIKey.Strategy.Whitelist,
 				)
 				logx.Must(err)
 				return authenticator

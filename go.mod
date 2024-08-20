@@ -8,6 +8,7 @@ require (
 	github.com/golangci/golangci-lint v1.60.1
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0
 	github.com/jinzhu/copier v0.4.0
+	github.com/meilisearch/meilisearch-go v0.27.2
 	github.com/swaggo/files/v2 v2.0.1
 	github.com/zeromicro/go-zero v1.7.0
 	github.com/zeromicro/go-zero/tools/goctl v1.7.0
@@ -125,6 +126,7 @@ require (
 	github.com/gofrs/flock v0.12.1 // indirect
 	github.com/gofrs/uuid/v5 v5.3.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
