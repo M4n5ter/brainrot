@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m4n5ter/brainrot/pkg/mac"
+	"brainrot/pkg/mac"
+
 	"github.com/zeromicro/go-zero/core/collection"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"google.golang.org/grpc/codes"
@@ -57,53 +58,53 @@ func NewAuthenticator(store *redis.Redis, keyPrefix string, strict bool, whiteli
 }
 
 // Authenticate authenticates the given ctx.
-func (a *Authenticator) Authenticate(ctx context.Context) error {
+func (a *Authenticator) Authenticate(ctx context.Context) (metadata.MD, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
-		return status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, missingMetadata)
 	}
 
 	methods, urls, hostnames, ports := md[httpMethod], md[httpURL], md[httpHostname], md[httpPort]
 
 	if len(methods) == 0 || len(urls) == 0 || len(hostnames) == 0 || len(ports) == 0 {
-		return status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, missingMetadata)
 	}
 
 	method, url, hostname, port := methods[0], urls[0], hostnames[0], ports[0]
 
 	if len(method) == 0 || len(url) == 0 || len(hostname) == 0 || len(port) == 0 {
-		return status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, missingMetadata)
 	}
 
 	// 如果在白名单中，直接通过
 	for _, v := range a.whitelist {
 		if strings.HasPrefix(url, v) {
-			return nil
+			return nil, nil
 		}
 	}
 
 	tokens := md.Get("authorization")
 	if len(tokens) == 0 {
-		return status.Error(codes.Unauthenticated, missingMetadata)
+		return nil, status.Error(codes.Unauthenticated, missingMetadata)
 	}
 
 	token := tokens[0]
 	if !strings.HasPrefix(token, "MAC ") {
-		return status.Error(codes.Unauthenticated, "")
+		return nil, status.Error(codes.Unauthenticated, "")
 	}
 
 	var id, ts, nonce, ext, macstr string
 	parts := strings.Split(token[len("MAC "):], ",")
 	// The count of header attributes must be 4 or 5.
 	if len(parts) != 4 && len(parts) != 5 {
-		return status.Error(codes.Unauthenticated, invalidAuthorization)
+		return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
 	}
 
 	for _, part := range parts {
 		trimed := strings.TrimSpace(part)
 		i := strings.Index(trimed, "=")
 		if i == -1 {
-			return status.Error(codes.Unauthenticated, invalidAuthorization)
+			return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
 		}
 		k, v := trimed[:i], strings.TrimFunc(trimed[i+1:], func(r rune) bool {
 			return r == '"'
@@ -121,33 +122,38 @@ func (a *Authenticator) Authenticate(ctx context.Context) error {
 		case "mac":
 			macstr = v
 		default:
-			return status.Error(codes.Unauthenticated, invalidAuthorization)
+			return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
 		}
 	}
 
 	if len(id) == 0 || len(ts) == 0 || len(nonce) == 0 || len(macstr) == 0 {
-		return status.Error(codes.Unauthenticated, invalidAuthorization)
+		return nil, status.Error(codes.Unauthenticated, invalidAuthorization)
 	}
 
-	return a.validate(mac.NewRequest(
+	userid, err := a.validate(mac.NewRequest(
 		id, ts, nonce, ext, macstr,
 	), method, url, hostname, port)
+	if err != nil {
+		return nil, err
+	}
+
+	return metadata.Pairs("userid", userid), err
 }
 
-func (a *Authenticator) validate(macreq mac.Request, method, url, hostname, port string) error {
+func (a *Authenticator) validate(macreq mac.Request, method, url, hostname, port string) (userid string, err error) {
 	// 验证时间戳
 	tsSec, err := strconv.Atoi(macreq.TS)
 	if err != nil {
-		return status.Error(codes.Unauthenticated, "invalid timestamp")
+		return "", status.Error(codes.Unauthenticated, "invalid timestamp")
 	}
 
 	ts := time.Unix(int64(tsSec), 0).Unix()
 	now := time.Now().Unix()
 	if now-ts > 60 {
-		return status.Error(codes.Unauthenticated, "timestamp expired")
+		return "", status.Error(codes.Unauthenticated, "timestamp expired")
 	}
 	if ts-now > 3 {
-		return status.Error(codes.Unauthenticated, "timestamp invalid")
+		return "", status.Error(codes.Unauthenticated, "timestamp invalid")
 	}
 
 	// 验证 id 是否存在，存在的话取出对应的 key
@@ -158,13 +164,13 @@ func (a *Authenticator) validate(macreq mac.Request, method, url, hostname, port
 	})
 	if err != nil {
 		if a.strict {
-			return status.Error(codes.Internal, err.Error())
+			return "", status.Error(codes.Internal, err.Error())
 		}
 
-		return nil
+		return "", nil
 	}
 	if expectKey == nil {
-		return status.Error(codes.Unauthenticated, "mac key not found")
+		return "", status.Error(codes.Unauthenticated, "mac key not found")
 	}
 
 	// 计算 MAC
@@ -172,7 +178,7 @@ func (a *Authenticator) validate(macreq mac.Request, method, url, hostname, port
 	h := hmac.New(sha256.New, []byte(expectKey.(string)))
 	h.Write([]byte(reqstr))
 	if calculatedMAC := base64.StdEncoding.EncodeToString(h.Sum(nil)); calculatedMAC != macreq.MAC {
-		return status.Error(codes.Unauthenticated, "invalid mac")
+		return "", status.Error(codes.Unauthenticated, "invalid mac")
 	}
 
 	// 验证 MAC ID, timestamp, nonce 组合的唯一性
@@ -183,14 +189,24 @@ func (a *Authenticator) validate(macreq mac.Request, method, url, hostname, port
 	})
 	if err != nil {
 		if a.strict {
-			return status.Error(codes.Internal, err.Error())
+			return "", status.Error(codes.Internal, err.Error())
 		}
 
-		return nil
+		return "", nil
 	}
 	if exist := existCombination.(bool); !exist {
-		return status.Error(codes.Unauthenticated, "repeated nonce")
+		return "", status.Error(codes.Unauthenticated, "repeated nonce")
 	}
 
-	return nil
+	// 验证通过取出 userid
+	userid, err = a.store.Hget(htable, "userid")
+	if err != nil {
+		if a.strict {
+			return "", status.Error(codes.Internal, err.Error())
+		}
+
+		return "", nil
+	}
+	// 到这一步 userid 一定存在
+	return userid, nil
 }

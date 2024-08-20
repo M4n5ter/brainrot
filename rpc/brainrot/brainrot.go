@@ -3,14 +3,14 @@ package main
 import (
 	"flag"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	unaryserverinterceptors "github.com/m4n5ter/brainrot/pkg/grpcinterceptor"
-	"github.com/m4n5ter/brainrot/pkg/grpcinterceptor/auth"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/config"
-	articleServer "github.com/m4n5ter/brainrot/rpc/brainrot/internal/server/article"
-	pingServer "github.com/m4n5ter/brainrot/rpc/brainrot/internal/server/ping"
-	userServer "github.com/m4n5ter/brainrot/rpc/brainrot/internal/server/user"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
+	"brainrot/gen/pb/brainrot"
+	unaryserverinterceptors "brainrot/pkg/grpcinterceptor"
+	"brainrot/pkg/grpcinterceptor/auth"
+	"brainrot/rpc/brainrot/internal/config"
+	articleServer "brainrot/rpc/brainrot/internal/server/article"
+	pingServer "brainrot/rpc/brainrot/internal/server/ping"
+	userServer "brainrot/rpc/brainrot/internal/server/user"
+	"brainrot/rpc/brainrot/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/logx"

@@ -11,8 +11,9 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
-	"github.com/m4n5ter/brainrot/pkg/grpcinterceptor/auth"
-	"github.com/m4n5ter/brainrot/pkg/merror"
+	"brainrot/pkg/grpcinterceptor/auth"
+	"brainrot/pkg/merror"
+
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
@@ -47,10 +48,12 @@ func OAuth2MACAuthorizeInterceptor(authenticator *auth.Authenticator) grpc.Unary
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler,
 	) (any, error) {
-		if err := authenticator.Authenticate(ctx); err != nil {
+		md, err := authenticator.Authenticate(ctx)
+		if err != nil {
 			return nil, err
 		}
 
+		ctx = metadata.NewIncomingContext(ctx, md)
 		return handler(ctx, req)
 	}
 }

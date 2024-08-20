@@ -3,8 +3,8 @@ package pinglogic
 import (
 	"context"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
+	"brainrot/gen/pb/brainrot"
+	"brainrot/rpc/brainrot/internal/svc"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )

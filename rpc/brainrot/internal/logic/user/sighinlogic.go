@@ -3,11 +3,12 @@ package userlogic
 import (
 	"context"
 
+	"brainrot/gen/pb/brainrot"
+	"brainrot/pkg/util/validator"
+	"brainrot/rpc/brainrot/internal/svc"
+	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
+
 	"github.com/jinzhu/copier"
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	"github.com/m4n5ter/brainrot/pkg/util/validator"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
-	usermodule "github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc/module/user"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -45,20 +46,42 @@ func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInRespon
 		return nil, usermodule.ErrInvalidInput.Wrap("密码错误，邮箱为：%s", in.Email)
 	}
 
-	macresp, err := l.svcCtx.GenMACResponse(usermodel.Id)
-	if err != nil {
-		return nil, err
-	}
-
 	resp := &brainrot.SighInResponse{}
 	err = copier.Copy(resp, usermodel)
 	if err != nil {
 		return nil, usermodule.ErrCopierCopy.Wrap("拷贝用户信息失败")
 	}
 
-	resp.MacId = macresp.ID
-	resp.MacKey = macresp.Key
-	resp.MacAlgorithm = macresp.Algorithm
-	resp.RefreshToken = macresp.RefreshToken
+	if l.svcCtx.Config.MAC.Strategy.Enable {
+		macresp, err := l.svcCtx.GenMACResponse(int64(usermodel.Id))
+		if err != nil {
+			return nil, err
+		}
+
+		macfields := &brainrot.SighInResponse_MacFields{
+			MacFields: &brainrot.MacFields{
+				MacId:        macresp.ID,
+				MacKey:       macresp.Key,
+				MacAlgorithm: macresp.Algorithm,
+			},
+		}
+		resp.Auth = macfields
+		resp.RefreshToken = macresp.RefreshToken
+
+	} else if l.svcCtx.Config.APIKey.Strategy.Enable {
+		apiresp, err := l.svcCtx.GenAPIKeyResponse(int64(usermodel.Id))
+		if err != nil {
+			return nil, err
+		}
+
+		apikey := &brainrot.SighInResponse_ApiKey{
+			ApiKey: apiresp.Key,
+		}
+		resp.Auth = apikey
+		resp.RefreshToken = apiresp.RefreshToken
+	} else {
+		return nil, usermodule.ErrServerError.Wrap("MAC 和 APIKey 策略均未启用")
+	}
+
 	return resp, nil
 }

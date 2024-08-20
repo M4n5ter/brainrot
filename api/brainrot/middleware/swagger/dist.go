@@ -2,6 +2,7 @@ package swagger
 
 import (
 	"embed"
+	"io/fs"
 	"net/http"
 
 	swaggerfiles "github.com/swaggo/files/v2"
@@ -13,9 +14,10 @@ type Files struct {
 }
 
 func NewSwaggerFiles() Files {
+	json, _ := fs.Sub(swaggerjson, "proto")
 	return Files{
 		dist: http.FS(swaggerfiles.FS),
-		json: http.FS(swaggerjson),
+		json: http.FS(json),
 	}
 }
 
@@ -27,5 +29,5 @@ func (s Files) Open(name string) (http.File, error) {
 	return s.json.Open(name)
 }
 
-//go:embed brainrot.swagger.json
+//go:embed proto/brainrot.swagger.json
 var swaggerjson embed.FS

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -19,57 +21,75 @@ var (
 	userRows                = strings.Join(userFieldNames, ",")
 	userRowsExpectAutoSet   = strings.Join(stringx.Remove(userFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	userRowsWithPlaceHolder = strings.Join(stringx.Remove(userFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheUserIdPrefix       = "cache:user:id:"
+	cacheUserEmailPrefix    = "cache:user:email:"
+	cacheUserUsernamePrefix = "cache:user:username:"
 )
 
 type (
 	userModel interface {
 		Insert(ctx context.Context, data *User) (sql.Result, error)
-		FindOne(ctx context.Context, id int64) (*User, error)
+		FindOne(ctx context.Context, id uint64) (*User, error)
 		FindOneByEmail(ctx context.Context, email string) (*User, error)
 		FindOneByUsername(ctx context.Context, username string) (*User, error)
 		Update(ctx context.Context, data *User) error
-		Delete(ctx context.Context, id int64) error
+		Delete(ctx context.Context, id uint64) error
 	}
 
 	defaultUserModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
 	User struct {
-		Id           int64     `db:"id"`
+		Id           uint64    `db:"id"`
 		Username     string    `db:"username"`
 		Email        string    `db:"email"`
 		Password     string    `db:"password"`
 		AvatarUrl    string    `db:"avatar_url"`
 		Introduction string    `db:"introduction"`
 		ProfileInfo  string    `db:"profile_info"`
+		Status       int64     `db:"status"` // 1: active, 0: deleted
 		CreatedAt    time.Time `db:"created_at"`
 		UpdatedAt    time.Time `db:"updated_at"`
 	}
 )
 
-func newUserModel(conn sqlx.SqlConn) *defaultUserModel {
+func newUserModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultUserModel {
 	return &defaultUserModel{
-		conn:  conn,
-		table: "`user`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`user`",
 	}
 }
 
-func (m *defaultUserModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+func (m *defaultUserModel) Delete(ctx context.Context, id uint64) error {
+	data, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	userEmailKey := fmt.Sprintf("%s%v", cacheUserEmailPrefix, data.Email)
+	userIdKey := fmt.Sprintf("%s%v", cacheUserIdPrefix, id)
+	userUsernameKey := fmt.Sprintf("%s%v", cacheUserUsernamePrefix, data.Username)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, userEmailKey, userIdKey, userUsernameKey)
 	return err
 }
 
-func (m *defaultUserModel) FindOne(ctx context.Context, id int64) (*User, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", userRows, m.table)
+func (m *defaultUserModel) FindOne(ctx context.Context, id uint64) (*User, error) {
+	userIdKey := fmt.Sprintf("%s%v", cacheUserIdPrefix, id)
 	var resp User
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, userIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", userRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -77,13 +97,19 @@ func (m *defaultUserModel) FindOne(ctx context.Context, id int64) (*User, error)
 }
 
 func (m *defaultUserModel) FindOneByEmail(ctx context.Context, email string) (*User, error) {
+	userEmailKey := fmt.Sprintf("%s%v", cacheUserEmailPrefix, email)
 	var resp User
-	query := fmt.Sprintf("select %s from %s where `email` = ? limit 1", userRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &resp, query, email)
+	err := m.QueryRowIndexCtx(ctx, &resp, userEmailKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where `email` = ? limit 1", userRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, email); err != nil {
+			return nil, err
+		}
+		return resp.Id, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -91,13 +117,19 @@ func (m *defaultUserModel) FindOneByEmail(ctx context.Context, email string) (*U
 }
 
 func (m *defaultUserModel) FindOneByUsername(ctx context.Context, username string) (*User, error) {
+	userUsernameKey := fmt.Sprintf("%s%v", cacheUserUsernamePrefix, username)
 	var resp User
-	query := fmt.Sprintf("select %s from %s where `username` = ? limit 1", userRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &resp, query, username)
+	err := m.QueryRowIndexCtx(ctx, &resp, userUsernameKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where `username` = ? limit 1", userRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, username); err != nil {
+			return nil, err
+		}
+		return resp.Id, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -105,15 +137,39 @@ func (m *defaultUserModel) FindOneByUsername(ctx context.Context, username strin
 }
 
 func (m *defaultUserModel) Insert(ctx context.Context, data *User) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?)", m.table, userRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Username, data.Email, data.Password, data.AvatarUrl, data.Introduction, data.ProfileInfo)
+	userEmailKey := fmt.Sprintf("%s%v", cacheUserEmailPrefix, data.Email)
+	userIdKey := fmt.Sprintf("%s%v", cacheUserIdPrefix, data.Id)
+	userUsernameKey := fmt.Sprintf("%s%v", cacheUserUsernamePrefix, data.Username)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?)", m.table, userRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Username, data.Email, data.Password, data.AvatarUrl, data.Introduction, data.ProfileInfo, data.Status)
+	}, userEmailKey, userIdKey, userUsernameKey)
 	return ret, err
 }
 
 func (m *defaultUserModel) Update(ctx context.Context, newData *User) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, userRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.Username, newData.Email, newData.Password, newData.AvatarUrl, newData.Introduction, newData.ProfileInfo, newData.Id)
+	data, err := m.FindOne(ctx, newData.Id)
+	if err != nil {
+		return err
+	}
+
+	userEmailKey := fmt.Sprintf("%s%v", cacheUserEmailPrefix, data.Email)
+	userIdKey := fmt.Sprintf("%s%v", cacheUserIdPrefix, data.Id)
+	userUsernameKey := fmt.Sprintf("%s%v", cacheUserUsernamePrefix, data.Username)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, userRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, newData.Username, newData.Email, newData.Password, newData.AvatarUrl, newData.Introduction, newData.ProfileInfo, newData.Status, newData.Id)
+	}, userEmailKey, userIdKey, userUsernameKey)
 	return err
+}
+
+func (m *defaultUserModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheUserIdPrefix, primary)
+}
+
+func (m *defaultUserModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", userRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultUserModel) tableName() string {
@@ -124,60 +180,77 @@ func (m *defaultUserModel) tableName() string {
 
 type extendedUserModel interface {
 	Trans(ctx context.Context, fn func(context context.Context, session sqlx.Session) error) error
-	FindPageListByIdDESC(ctx context.Context, preMinID, pageSize int64) ([]*User, error)
-	FindPageListByIdASC(ctx context.Context, preMaxID, pageSize int64) ([]*User, error)
+	LogicDelete(ctx context.Context, id uint64) error
+	FindPageListByIdDESC(ctx context.Context, preMinID, pageSize uint64) ([]*User, error)
+	FindPageListByIdASC(ctx context.Context, preMaxID, pageSize uint64) ([]*User, error)
 }
 
-func (m *defaultUserModel) FindPageListByIdDESC(ctx context.Context, preMinID, pageSize int64) ([]*User, error) {
+func (m *defaultUserModel) LogicDelete(ctx context.Context, id uint64) error {
+	data, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	userEmailKey := fmt.Sprintf("%s%v", cacheUserEmailPrefix, data.Email)
+	userIdKey := fmt.Sprintf("%s%v", cacheUserIdPrefix, id)
+	userUsernameKey := fmt.Sprintf("%s%v", cacheUserUsernamePrefix, data.Username)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, userEmailKey, userIdKey, userUsernameKey)
+	return err
+}
+
+func (m *defaultUserModel) FindPageListByIdDESC(ctx context.Context, preMinID, pageSize uint64) ([]*User, error) {
 	args := []any{}
 	where := " "
 
 	if preMinID > 0 {
-		where = " where id < ? "
+		where = " WHERE `id` < ? and `status` = 1"
 		args = append(args, preMinID)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY id DESC LIMIT ?", userRows, m.table, where)
+	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY `id` DESC LIMIT ?", userRows, m.table, where)
 	args = append(args, pageSize)
 
 	var resp []*User
-
-	err := m.conn.QueryRowsCtx(ctx, &resp, query, args...)
-
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...)
 	switch err {
 	case nil:
 		return resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
 	default:
 		return nil, err
 	}
 }
 
-func (m *defaultUserModel) FindPageListByIdASC(ctx context.Context, preMaxID, pageSize int64) ([]*User, error) {
+func (m *defaultUserModel) FindPageListByIdASC(ctx context.Context, preMaxID, pageSize uint64) ([]*User, error) {
 	args := []any{}
 	where := " "
 
 	if preMaxID > 0 {
-		where = " where id > ? "
+		where = " WHERE `id` > ? and `status` = 1"
 		args = append(args, preMaxID)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY id ASC LIMIT ?", userRows, m.table, where)
+	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY `id` ASC LIMIT ?", userRows, m.table, where)
 	args = append(args, pageSize)
 
 	var resp []*User
-
-	err := m.conn.QueryRowsCtx(ctx, &resp, query, args...)
-
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...)
 	switch err {
 	case nil:
 		return resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
 	default:
 		return nil, err
 	}
 }
 
 func (m *defaultUserModel) Trans(ctx context.Context, fn func(ctx context.Context, session sqlx.Session) error) error {
-	return m.conn.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
+	return m.TransactCtx(ctx, func(ctx context.Context, session sqlx.Session) error {
 		return fn(ctx, session)
 	})
 }

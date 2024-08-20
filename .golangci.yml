@@ -73,8 +73,9 @@ linters-settings:
       - name: errorf
       - name: duplicated-imports
       - name: modifies-value-receiver
-  # gofumpt:
-  #   extra-rules: true  # VSCode team doesn't like this rule, they don't provide a option to enable this flag.
+  gofumpt:
+    module-path: brainrot
+    extra-rules: false  # VSCode team doesn't like this rule, they don't provide a option to enable this flag.
   depguard:
     rules:
       # main rule

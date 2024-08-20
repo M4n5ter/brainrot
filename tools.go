@@ -5,6 +5,7 @@
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway
 //go:generate go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2
 //go:generate go install github.com/zeromicro/go-zero/tools/goctl
+//go:generate go install github.com/bufbuild/buf/cmd/buf@latest
 //go:generate go install google.golang.org/grpc/cmd/protoc-gen-go-grpc
 //go:generate go install google.golang.org/protobuf/cmd/protoc-gen-go
 
@@ -12,6 +13,7 @@
 package brainrot
 
 import (
+	_ "github.com/bufbuild/buf/cmd/buf"
 	_ "github.com/golangci/golangci-lint/cmd/golangci-lint"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-grpc-gateway"
 	_ "github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2"

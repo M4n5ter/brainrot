@@ -2,29 +2,48 @@
 
 type extended{{.upperStartCamelObject}}Model interface {
     Trans(ctx context.Context,fn func(context context.Context,session sqlx.Session) error) error
+	LogicDelete(ctx context.Context, {{.lowerStartCamelPrimaryKey}} {{.primaryKeyDataType}}) error
     FindPageListBy{{.upperStartCamelPrimaryKey}}DESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
     FindPageListBy{{.upperStartCamelPrimaryKey}}ASC(ctx context.Context, preMaxID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error)
 }
+
+func (m *default{{.upperStartCamelObject}}Model) LogicDelete(ctx context.Context, {{.lowerStartCamelPrimaryKey}} {{.primaryKeyDataType}}) error {
+	{{if .withCache}}{{if .containsIndexCache}}data, err:=m.FindOne(ctx, {{.lowerStartCamelPrimaryKey}})
+	if err!=nil{
+		return err
+	}
+
+{{end}}	{{.keys}}
+    _, err {{if .containsIndexCache}}={{else}}:={{end}} m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE {{.originalPrimaryKey}} = {{if .postgreSql}}$1{{else}}?{{end}}", m.table)
+		return conn.ExecCtx(ctx, query, {{.lowerStartCamelPrimaryKey}})
+	}, {{.keyValues}}){{else}}query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE {{.originalPrimaryKey}} = {{if .postgreSql}}$1{{else}}?{{end}}", m.table)
+		_,err:=m.conn.ExecCtx(ctx, query, {{.lowerStartCamelPrimaryKey}}){{end}}
+	return err
+}
+
 
 func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCamelPrimaryKey}}DESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
 	args := []any{}
 	where := " "
 	
 	if preMinID > 0 {
-		where = " where {{.lowerStartCamelPrimaryKey}} < ? "
+		where = " WHERE {{.originalPrimaryKey}} < ? and `status` = 1"
 		args = append(args, preMinID)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY {{.lowerStartCamelPrimaryKey}} DESC LIMIT ?", {{.lowerStartCamelObject}}Rows, m.table, where)
+	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY {{.originalPrimaryKey}} DESC LIMIT ?", {{.lowerStartCamelObject}}Rows, m.table, where)
 	args = append(args, pageSize)
 
 	var resp []*{{.upperStartCamelObject}}
 	{{if .withCache}}err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...){{else}}
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, args...)
-	{{end}}
+	{{- end}}
 	switch err {
 	case nil:
 		return resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
 	default:
 		return nil, err
 	}
@@ -35,20 +54,22 @@ func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCame
 	where := " "
 	
 	if preMaxID > 0 {
-		where = " where {{.lowerStartCamelPrimaryKey}} > ? "
+		where = " WHERE {{.originalPrimaryKey}} > ? and `status` = 1"
 		args = append(args, preMaxID)
 	}
 
-	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY {{.lowerStartCamelPrimaryKey}} ASC LIMIT ?", {{.lowerStartCamelObject}}Rows, m.table, where)
+	query := fmt.Sprintf("SELECT %s FROM %s%sORDER BY {{.originalPrimaryKey}} ASC LIMIT ?", {{.lowerStartCamelObject}}Rows, m.table, where)
 	args = append(args, pageSize)
 
 	var resp []*{{.upperStartCamelObject}}
 	{{if .withCache}}err := m.QueryRowsNoCacheCtx(ctx, &resp, query, args...){{else}}
 	err := m.conn.QueryRowsCtx(ctx, &resp, query, args...)
-	{{end}}
+	{{- end}}
 	switch err {
 	case nil:
 		return resp, nil
+	case sqlx.ErrNotFound:
+		return nil, ErrNotFound
 	default:
 		return nil, err
 	}

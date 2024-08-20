@@ -5,7 +5,7 @@ package brainrot.v1;
 import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
-option go_package = "./brainrot";
+option go_package = "pb/brainrot";
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "brainrot API"
@@ -17,7 +17,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
       email: "m4n5terrr@gmail.com"
     }
     license: {
-      name: "未开智选手 License"
+      name: "联系: M4n5ter"
       url: "https://t.me/M4n5ter"
     }
   }
@@ -76,7 +76,7 @@ message SighUpRequest {
   };
 }
 message SighUpResponse {
-  int64 user_id = 1;
+  uint64 user_id = 1;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
@@ -88,24 +88,15 @@ message SighUpResponse {
 message SighInRequest {
   string email = 1;
   string password = 2;
-  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
-    json_schema: {
-      type: OBJECT
-      description: "用户登录请求体"
-      required: [
-        "email",
-        "password"
-      ]
-    }
-  };
 }
 message SighInResponse {
   string username = 1;
   string avatar_url = 2;
-  string mac_id = 3;
-  string mac_key = 4;
-  string mac_algorithm = 5;
-  string refresh_token = 6;
+  oneof auth {
+    string api_key = 3;
+    MacFields mac_fields = 4;
+  }
+  string refresh_token = 5;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
@@ -114,28 +105,65 @@ message SighInResponse {
     }
   };
 }
-message RefreshTokenRequest {
-  string refresh_token = 1;
+message UpdateUserRequest {
+  string username = 1;
+  string email = 2;
+  string password = 3;
+  string avatar_url = 4;
+  string introduction = 5;
+  string profile_info = 6;
+}
+message UpdateUserResponse {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
-      description: "刷新令牌请求体"
-      required: ["refresh_token"]
+      description: "更新用户信息响应体"
+      example: '{"code": 0, "message": "ok"}'
     }
   };
 }
+message SearchUsersRequest {
+  string email = 1;
+  string username = 2;
+}
+message SearchUsersResponse {
+  message User {
+    string username = 1;
+    string email = 2;
+    string avatar_url = 3;
+    string introduction = 4;
+    string profile_info = 5;
+  }
+  repeated User users = 1;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "搜索用户响应体"
+      example: '{"code": 0, "message": "ok", "data": {"users": [{"username": "m4n5ter", "email": "email", "avatar_url": "https://example.com/avatar.jpg", "introduction": "introduction", "profile_info": "{}"}]}}'
+    }
+  };
+}
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
 message RefreshTokenResponse {
-  string mac_id = 3;
-  string mac_key = 4;
-  string mac_algorithm = 5;
-  string refresh_token = 6;
+  oneof auth {
+    string api_key = 1;
+    MacFields mac_fields = 2;
+  }
+  string refresh_token = 3;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
       description: "刷新令牌响应体"
-      example: '{"code": 0, "message": "ok", "data": {"mac_id": "mac_id", "mac_key": "mac_key", "mac_algorithm": "mac_algorithm", "refresh_token": "refresh_token"}}'
+      example: '{"code": 0, "message": "ok", "data": {"auth":{"mac_id": "mac_id", "mac_key": "mac_key", "mac_algorithm": "mac_algorithm"}, "refresh_token": "refresh_token"}}'
     }
   };
+}
+message MacFields {
+  string mac_id = 1;
+  string mac_key = 2;
+  string mac_algorithm = 3;
 }
 // User end
 
@@ -147,10 +175,13 @@ message PostArticleRequest {
   repeated string tags = 3;
 }
 message PostArticleResponse {
-  int64 article_id = 1;
+  uint64 article_id = 1;
 }
 message DeleteArticleRequest {
-  int64 article_id = 1;
+  oneof identifier {
+    uint64 id = 1;
+    string title = 2;
+  }
 }
 message DeleteArticleResponse {}
 // Article end
@@ -163,7 +194,7 @@ message PingResponse {}
 
 // API error
 message Error {
-  int32 code = 1;
+  uint32 code = 1;
   string message = 2;
 }
 
@@ -212,6 +243,50 @@ service User {
             description: "登录成功"
             schema: {
               json_schema: {ref: ".brainrot.v1.SighInResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Update user
+  rpc Update(UpdateUserRequest) returns (UpdateUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/user/update"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新用户信息"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "更新成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.UpdateUserResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Search users
+  rpc Search(SearchUsersRequest) returns (SearchUsersResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/user/search"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "搜索用户"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "搜索成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.SearchUserResponse"}
             }
           }
         }

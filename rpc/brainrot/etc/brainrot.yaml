@@ -12,11 +12,25 @@ Redis:
   Type: node
   Pass: 
   Key:
+Cache:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: 
 
-MAC:
+# MAC:
+#   Secret: "brainrot"
+#   RefreshExpire: 2592000 # 30 days
+#   KeyPrefix: "oauth2:mac:"
+#   Strategy:
+#     Enable: true
+#     Whitelist:
+#       - "/v1/brainrot/user/sigh-up"
+#       - "/v1/brainrot/user/sigh-in"
+
+APIKey:
   Secret: "brainrot"
   RefreshExpire: 2592000 # 30 days
-  KeyPrefix: "oauth2:mac:"
+  KeyPrefix: "oauth2:apikey:"
   Strategy:
     Enable: true
     Whitelist:

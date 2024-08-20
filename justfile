@@ -49,8 +49,8 @@ input 'Y/N' to continue or exit.
 """)]
 [group('generate')]
 genrpc target:
-    @goctl rpc protoc --multiple --home {{ join(root, ".goctl") }} {{ join(proto, target) }}.proto -I . -I {{ proto }} --go_out={{ pb }} --go-grpc_out={{ pb }} --zrpc_out={{ join(rpc, target) }}
-    @protoc -I . -I {{ proto }} --grpc-gateway_out={{ pb }} --openapiv2_out={{openapi}} {{ join(proto, target) }}.proto
+    @buf generate
+    @goctl rpc protoc --multiple --home {{ join(root, ".goctl") }} {{ join(proto, target) }}.proto -I . -I {{ proto }} -I /root/.cache/buf/ --go_out={{ gen }} --go-grpc_out={{ gen }} --zrpc_out={{ join(rpc, target) }}
 
 # generate model code. e.g., just genmodel user brainrot - 生成 model 代码
 [confirm("""
@@ -61,7 +61,7 @@ input 'Y/N' to continue or exit.
 """)]
 [group('generate')]
 genmodel sql_name target="brainrot" *args="":
-    @goctl model mysql ddl --home {{ join(root, ".goctl") }} {{ args }} --strict --dir model --src {{ join(root, "sql", target, sql_name) }}.sql
+    @goctl model mysql ddl --cache --home {{ join(root, ".goctl") }} {{ args }} --strict --dir model --src {{ join(root, "sql", target, sql_name) }}.sql
 
 # run e.g., just run rpc brainrot - 运行
 [group('dev')]
@@ -81,7 +81,7 @@ lint: dep-golangci-lint
 
 # install dependencies - 安装依赖工具
 [group('dependencies')]
-dependencies: dep-golangci-lint dep-gofumpt dep-goctl dep-protoc-gen-go dep-protoc-gen-go-grpc dep-protoc-gen-grpc-gateway
+dependencies: dep-golangci-lint dep-gofumpt dep-goctl dep-buf dep-protoc-gen-go dep-protoc-gen-go-grpc dep-protoc-gen-grpc-gateway
 
 # a linter for Go - 一个 Go 语言的代码检查工具
 [group('dependencies')]
@@ -107,6 +107,10 @@ dep-goctl-env:
 dep-protoc:
     @echo "{{ yellow }}Please install protoc from https://grpc.io/docs/protoc-installation/"
     @echo "请从 https://grpc.io/docs/protoc-installation/ 安装 protoc{{ normal }}"
+
+[group('dependencies')]
+dep-buf:
+    @go install github.com/bufbuild/buf/cmd/buf@latest
 
 [group('dependencies')]
 dep-protoc-gen-go:
@@ -136,7 +140,7 @@ root := justfile_directory()
 api := join(root, "api")
 rpc := join(root, "rpc")
 proto := join(root, "proto")
-pb := join(root, "pb")
+gen := join(root, "gen")
 openapi := join(api, project_name, "middleware", "swagger")
 
 #=================================== variables end =========================================#

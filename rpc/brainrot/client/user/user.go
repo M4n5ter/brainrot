@@ -6,32 +6,42 @@ package user
 import (
 	"context"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
+	"brainrot/gen/pb/brainrot"
 
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
 )
 
 type (
-	DeleteArticleRequest  = brainrot.DeleteArticleRequest
-	DeleteArticleResponse = brainrot.DeleteArticleResponse
-	Error                 = brainrot.Error
-	PingRequest           = brainrot.PingRequest
-	PingResponse          = brainrot.PingResponse
-	PostArticleRequest    = brainrot.PostArticleRequest
-	PostArticleResponse   = brainrot.PostArticleResponse
-	RefreshTokenRequest   = brainrot.RefreshTokenRequest
-	RefreshTokenResponse  = brainrot.RefreshTokenResponse
-	SighInRequest         = brainrot.SighInRequest
-	SighInResponse        = brainrot.SighInResponse
-	SighUpRequest         = brainrot.SighUpRequest
-	SighUpResponse        = brainrot.SighUpResponse
+	DeleteArticleRequest     = brainrot.DeleteArticleRequest
+	DeleteArticleResponse    = brainrot.DeleteArticleResponse
+	Error                    = brainrot.Error
+	MacFields                = brainrot.MacFields
+	PingRequest              = brainrot.PingRequest
+	PingResponse             = brainrot.PingResponse
+	PostArticleRequest       = brainrot.PostArticleRequest
+	PostArticleResponse      = brainrot.PostArticleResponse
+	RefreshTokenRequest      = brainrot.RefreshTokenRequest
+	RefreshTokenResponse     = brainrot.RefreshTokenResponse
+	SearchUsersRequest       = brainrot.SearchUsersRequest
+	SearchUsersResponse      = brainrot.SearchUsersResponse
+	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
+	SighInRequest            = brainrot.SighInRequest
+	SighInResponse           = brainrot.SighInResponse
+	SighUpRequest            = brainrot.SighUpRequest
+	SighUpResponse           = brainrot.SighUpResponse
+	UpdateUserRequest        = brainrot.UpdateUserRequest
+	UpdateUserResponse       = brainrot.UpdateUserResponse
 
 	User interface {
 		// Sigh up
 		SighUp(ctx context.Context, in *SighUpRequest, opts ...grpc.CallOption) (*SighUpResponse, error)
 		// Sigh in
 		SighIn(ctx context.Context, in *SighInRequest, opts ...grpc.CallOption) (*SighInResponse, error)
+		// Update user
+		Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
+		// Search users
+		Search(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 		// Refresh token
 		RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error)
 	}
@@ -57,6 +67,18 @@ func (m *defaultUser) SighUp(ctx context.Context, in *SighUpRequest, opts ...grp
 func (m *defaultUser) SighIn(ctx context.Context, in *SighInRequest, opts ...grpc.CallOption) (*SighInResponse, error) {
 	client := brainrot.NewUserClient(m.cli.Conn())
 	return client.SighIn(ctx, in, opts...)
+}
+
+// Update user
+func (m *defaultUser) Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error) {
+	client := brainrot.NewUserClient(m.cli.Conn())
+	return client.Update(ctx, in, opts...)
+}
+
+// Search users
+func (m *defaultUser) Search(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error) {
+	client := brainrot.NewUserClient(m.cli.Conn())
+	return client.Search(ctx, in, opts...)
 }
 
 // Refresh token

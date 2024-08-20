@@ -2,42 +2,22 @@
 package mac
 
 import (
-	"crypto/rand"
-	"encoding/base64"
+	"brainrot/pkg/util"
 )
 
 // Generate MAC key identifier and key
 func GenerateIDAndKey() (id, key string, err error) {
-	id, err = GenerateRandomString()
+	id, err = util.GenerateRandomBase64String()
 	if err != nil {
 		return id, key, err
 	}
 
-	key, err = GenerateRandomString()
+	key, err = util.GenerateRandomBase64String()
 	if err != nil {
 		return id, key, err
 	}
 
 	return id, key, err
-}
-
-func GenerateRandomString(opts ...Option) (string, error) {
-	length := 32
-
-	for _, opt := range opts {
-		length = opt.Length
-	}
-
-	randomBytes := make([]byte, length)
-	if _, err := rand.Read(randomBytes); err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(randomBytes), nil
-}
-
-type Option struct {
-	// Length of the random bytes
-	Length int
 }
 
 type Request struct {

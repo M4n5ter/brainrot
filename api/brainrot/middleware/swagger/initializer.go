@@ -3,8 +3,9 @@ package swagger
 import (
 	"strings"
 
+	"brainrot/pkg/util"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/m4n5ter/brainrot/pkg/util"
 )
 
 func Initializer() func(*fiber.Ctx) error {

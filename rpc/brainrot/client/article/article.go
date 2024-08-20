@@ -6,26 +6,32 @@ package article
 import (
 	"context"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
+	"brainrot/gen/pb/brainrot"
 
 	"github.com/zeromicro/go-zero/zrpc"
 	"google.golang.org/grpc"
 )
 
 type (
-	DeleteArticleRequest  = brainrot.DeleteArticleRequest
-	DeleteArticleResponse = brainrot.DeleteArticleResponse
-	Error                 = brainrot.Error
-	PingRequest           = brainrot.PingRequest
-	PingResponse          = brainrot.PingResponse
-	PostArticleRequest    = brainrot.PostArticleRequest
-	PostArticleResponse   = brainrot.PostArticleResponse
-	RefreshTokenRequest   = brainrot.RefreshTokenRequest
-	RefreshTokenResponse  = brainrot.RefreshTokenResponse
-	SighInRequest         = brainrot.SighInRequest
-	SighInResponse        = brainrot.SighInResponse
-	SighUpRequest         = brainrot.SighUpRequest
-	SighUpResponse        = brainrot.SighUpResponse
+	DeleteArticleRequest     = brainrot.DeleteArticleRequest
+	DeleteArticleResponse    = brainrot.DeleteArticleResponse
+	Error                    = brainrot.Error
+	MacFields                = brainrot.MacFields
+	PingRequest              = brainrot.PingRequest
+	PingResponse             = brainrot.PingResponse
+	PostArticleRequest       = brainrot.PostArticleRequest
+	PostArticleResponse      = brainrot.PostArticleResponse
+	RefreshTokenRequest      = brainrot.RefreshTokenRequest
+	RefreshTokenResponse     = brainrot.RefreshTokenResponse
+	SearchUsersRequest       = brainrot.SearchUsersRequest
+	SearchUsersResponse      = brainrot.SearchUsersResponse
+	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
+	SighInRequest            = brainrot.SighInRequest
+	SighInResponse           = brainrot.SighInResponse
+	SighUpRequest            = brainrot.SighUpRequest
+	SighUpResponse           = brainrot.SighUpResponse
+	UpdateUserRequest        = brainrot.UpdateUserRequest
+	UpdateUserResponse       = brainrot.UpdateUserResponse
 
 	Article interface {
 		// Post article

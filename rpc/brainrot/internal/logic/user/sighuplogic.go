@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"brainrot/gen/pb/brainrot"
+	"brainrot/model"
+	"brainrot/pkg/util/validator"
+	"brainrot/rpc/brainrot/internal/svc"
+	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
+
 	"github.com/jinzhu/copier"
-	"github.com/m4n5ter/brainrot/model"
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	"github.com/m4n5ter/brainrot/pkg/util/validator"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
-	usermodule "github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc/module/user"
 
 	"github.com/zeromicro/go-zero/core/jsonx"
 	"github.com/zeromicro/go-zero/core/logx"
@@ -73,5 +74,5 @@ func (l *SighUpLogic) SighUp(in *brainrot.SighUpRequest) (*brainrot.SighUpRespon
 		return nil, usermodule.ErrDBError.Wrap("获取插入数据的 ID 失败")
 	}
 
-	return &brainrot.SighUpResponse{UserId: id}, nil
+	return &brainrot.SighUpResponse{UserId: uint64(id)}, nil
 }

@@ -125,6 +125,8 @@ var Ping_ServiceDesc = grpc.ServiceDesc{
 const (
 	User_SighUp_FullMethodName       = "/brainrot.v1.User/SighUp"
 	User_SighIn_FullMethodName       = "/brainrot.v1.User/SighIn"
+	User_Update_FullMethodName       = "/brainrot.v1.User/Update"
+	User_Search_FullMethodName       = "/brainrot.v1.User/Search"
 	User_RefreshToken_FullMethodName = "/brainrot.v1.User/RefreshToken"
 )
 
@@ -136,6 +138,10 @@ type UserClient interface {
 	SighUp(ctx context.Context, in *SighUpRequest, opts ...grpc.CallOption) (*SighUpResponse, error)
 	// Sigh in
 	SighIn(ctx context.Context, in *SighInRequest, opts ...grpc.CallOption) (*SighInResponse, error)
+	// Update user
+	Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
+	// Search users
+	Search(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error)
 	// Refresh token
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error)
 }
@@ -168,6 +174,26 @@ func (c *userClient) SighIn(ctx context.Context, in *SighInRequest, opts ...grpc
 	return out, nil
 }
 
+func (c *userClient) Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateUserResponse)
+	err := c.cc.Invoke(ctx, User_Update_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) Search(ctx context.Context, in *SearchUsersRequest, opts ...grpc.CallOption) (*SearchUsersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchUsersResponse)
+	err := c.cc.Invoke(ctx, User_Search_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userClient) RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RefreshTokenResponse)
@@ -186,6 +212,10 @@ type UserServer interface {
 	SighUp(context.Context, *SighUpRequest) (*SighUpResponse, error)
 	// Sigh in
 	SighIn(context.Context, *SighInRequest) (*SighInResponse, error)
+	// Update user
+	Update(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
+	// Search users
+	Search(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error)
 	// Refresh token
 	RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error)
 	mustEmbedUnimplementedUserServer()
@@ -203,6 +233,12 @@ func (UnimplementedUserServer) SighUp(context.Context, *SighUpRequest) (*SighUpR
 }
 func (UnimplementedUserServer) SighIn(context.Context, *SighInRequest) (*SighInResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SighIn not implemented")
+}
+func (UnimplementedUserServer) Update(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
+}
+func (UnimplementedUserServer) Search(context.Context, *SearchUsersRequest) (*SearchUsersResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Search not implemented")
 }
 func (UnimplementedUserServer) RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RefreshToken not implemented")
@@ -264,6 +300,42 @@ func _User_SighIn_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	return interceptor(ctx, in, info, handler)
 }
 
+func _User_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).Update(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_Update_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).Update(ctx, req.(*UpdateUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_Search_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchUsersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).Search(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_Search_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).Search(ctx, req.(*SearchUsersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _User_RefreshToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RefreshTokenRequest)
 	if err := dec(in); err != nil {
@@ -296,6 +368,14 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SighIn",
 			Handler:    _User_SighIn_Handler,
+		},
+		{
+			MethodName: "Update",
+			Handler:    _User_Update_Handler,
+		},
+		{
+			MethodName: "Search",
+			Handler:    _User_Search_Handler,
 		},
 		{
 			MethodName: "RefreshToken",

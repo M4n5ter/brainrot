@@ -6,9 +6,9 @@ package server
 import (
 	"context"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/logic/user"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
+	"brainrot/gen/pb/brainrot"
+	"brainrot/rpc/brainrot/internal/logic/user"
+	"brainrot/rpc/brainrot/internal/svc"
 )
 
 type UserServer struct {
@@ -32,6 +32,18 @@ func (s *UserServer) SighUp(ctx context.Context, in *brainrot.SighUpRequest) (*b
 func (s *UserServer) SighIn(ctx context.Context, in *brainrot.SighInRequest) (*brainrot.SighInResponse, error) {
 	l := userlogic.NewSighInLogic(ctx, s.svcCtx)
 	return l.SighIn(in)
+}
+
+// Update user
+func (s *UserServer) Update(ctx context.Context, in *brainrot.UpdateUserRequest) (*brainrot.UpdateUserResponse, error) {
+	l := userlogic.NewUpdateLogic(ctx, s.svcCtx)
+	return l.Update(in)
+}
+
+// Search users
+func (s *UserServer) Search(ctx context.Context, in *brainrot.SearchUsersRequest) (*brainrot.SearchUsersResponse, error) {
+	l := userlogic.NewSearchLogic(ctx, s.svcCtx)
+	return l.Search(in)
 }
 
 // Refresh token

@@ -4,6 +4,10 @@ import (
 	"context"
 	"log"
 
+	"brainrot/api/brainrot/gatewayoption"
+	"brainrot/api/brainrot/middleware/swagger"
+	"brainrot/gen/pb/brainrot"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/compress"
@@ -11,9 +15,6 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/idempotency"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/m4n5ter/brainrot/api/brainrot/gatewayoption"
-	"github.com/m4n5ter/brainrot/api/brainrot/middleware/swagger"
-	"github.com/m4n5ter/brainrot/pb/brainrot"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

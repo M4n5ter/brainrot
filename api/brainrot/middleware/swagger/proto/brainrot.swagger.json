@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "title": "brainrot API",
-    "description": "M4n5ter 的笔记服务",
+    "description": "M4n5ter's brain rot time project",
     "version": "v1.0",
     "contact": {
       "name": "M4n5ter",
@@ -10,7 +10,7 @@
       "email": "m4n5terrr@gmail.com"
     },
     "license": {
-      "name": "未开智选手 License",
+      "name": "联系: M4n5ter",
       "url": "https://t.me/M4n5ter"
     }
   },
@@ -146,11 +146,43 @@
         "parameters": [
           {
             "name": "body",
-            "description": "刷新令牌请求体",
             "in": "body",
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1RefreshTokenRequest"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
+    },
+    "/v1/brainrot/user/search": {
+      "post": {
+        "summary": "搜索用户",
+        "operationId": "User_Search",
+        "responses": {
+          "200": {
+            "description": "搜索成功",
+            "schema": {
+              "$ref": ".brainrot.v1.SearchUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1SearchUsersRequest"
             }
           }
         ],
@@ -180,7 +212,6 @@
         "parameters": [
           {
             "name": "body",
-            "description": "用户登录请求体",
             "in": "body",
             "required": true,
             "schema": {
@@ -226,9 +257,62 @@
           "User"
         ]
       }
+    },
+    "/v1/brainrot/user/update": {
+      "post": {
+        "summary": "更新用户信息",
+        "operationId": "User_Update",
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateUserResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateUserRequest"
+            }
+          }
+        ],
+        "tags": [
+          "User"
+        ]
+      }
     }
   },
   "definitions": {
+    "SearchUsersResponseUser": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "introduction": {
+          "type": "string"
+        },
+        "profileInfo": {
+          "type": "string"
+        }
+      }
+    },
     "protobufAny": {
       "type": "object",
       "properties": {
@@ -260,14 +344,31 @@
     "v1DeleteArticleRequest": {
       "type": "object",
       "properties": {
-        "articleId": {
+        "id": {
           "type": "string",
-          "format": "int64"
+          "format": "uint64"
+        },
+        "title": {
+          "type": "string"
         }
       }
     },
     "v1DeleteArticleResponse": {
       "type": "object"
+    },
+    "v1MacFields": {
+      "type": "object",
+      "properties": {
+        "macId": {
+          "type": "string"
+        },
+        "macKey": {
+          "type": "string"
+        },
+        "macAlgorithm": {
+          "type": "string"
+        }
+      }
     },
     "v1PingResponse": {
       "type": "object"
@@ -294,22 +395,17 @@
       "properties": {
         "articleId": {
           "type": "string",
-          "format": "int64"
+          "format": "uint64"
         }
       }
     },
     "v1RefreshTokenRequest": {
       "type": "object",
-      "format": "object",
       "properties": {
         "refreshToken": {
           "type": "string"
         }
-      },
-      "description": "刷新令牌请求体",
-      "required": [
-        "refreshToken"
-      ]
+      }
     },
     "v1RefreshTokenResponse": {
       "type": "object",
@@ -318,21 +414,20 @@
         "code": 0,
         "message": "ok",
         "data": {
-          "mac_id": "mac_id",
-          "mac_key": "mac_key",
-          "mac_algorithm": "mac_algorithm",
+          "auth": {
+            "mac_id": "mac_id",
+            "mac_key": "mac_key",
+            "mac_algorithm": "mac_algorithm"
+          },
           "refresh_token": "refresh_token"
         }
       },
       "properties": {
-        "macId": {
+        "apiKey": {
           "type": "string"
         },
-        "macKey": {
-          "type": "string"
-        },
-        "macAlgorithm": {
-          "type": "string"
+        "macFields": {
+          "$ref": "#/definitions/v1MacFields"
         },
         "refreshToken": {
           "type": "string"
@@ -340,9 +435,48 @@
       },
       "description": "刷新令牌响应体"
     },
-    "v1SighInRequest": {
+    "v1SearchUsersRequest": {
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        }
+      }
+    },
+    "v1SearchUsersResponse": {
       "type": "object",
       "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "users": [
+            {
+              "username": "m4n5ter",
+              "email": "email",
+              "avatar_url": "https://example.com/avatar.jpg",
+              "introduction": "introduction",
+              "profile_info": "{}"
+            }
+          ]
+        }
+      },
+      "properties": {
+        "users": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/SearchUsersResponseUser"
+          }
+        }
+      },
+      "description": "搜索用户响应体"
+    },
+    "v1SighInRequest": {
+      "type": "object",
       "properties": {
         "email": {
           "type": "string"
@@ -350,12 +484,7 @@
         "password": {
           "type": "string"
         }
-      },
-      "description": "用户登录请求体",
-      "required": [
-        "email",
-        "password"
-      ]
+      }
     },
     "v1SighInResponse": {
       "type": "object",
@@ -379,14 +508,11 @@
         "avatarUrl": {
           "type": "string"
         },
-        "macId": {
+        "apiKey": {
           "type": "string"
         },
-        "macKey": {
-          "type": "string"
-        },
-        "macAlgorithm": {
-          "type": "string"
+        "macFields": {
+          "$ref": "#/definitions/v1MacFields"
         },
         "refreshToken": {
           "type": "string"
@@ -438,10 +564,42 @@
       "properties": {
         "userId": {
           "type": "string",
-          "format": "int64"
+          "format": "uint64"
         }
       },
       "description": "用户注册响应体"
+    },
+    "v1UpdateUserRequest": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "introduction": {
+          "type": "string"
+        },
+        "profileInfo": {
+          "type": "string"
+        }
+      }
+    },
+    "v1UpdateUserResponse": {
+      "type": "object",
+      "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok"
+      },
+      "description": "更新用户信息响应体"
     }
   },
   "securityDefinitions": {

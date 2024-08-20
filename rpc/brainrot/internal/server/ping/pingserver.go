@@ -6,9 +6,9 @@ package server
 import (
 	"context"
 
-	"github.com/m4n5ter/brainrot/pb/brainrot"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/logic/ping"
-	"github.com/m4n5ter/brainrot/rpc/brainrot/internal/svc"
+	"brainrot/gen/pb/brainrot"
+	"brainrot/rpc/brainrot/internal/logic/ping"
+	"brainrot/rpc/brainrot/internal/svc"
 )
 
 type PingServer struct {

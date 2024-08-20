@@ -1,7 +1,7 @@
 package svc
 
 import {{.imports}}
-import merror "github.com/m4n5ter/brainrot/pkg/error"
+import merror "brainrot/pkg/error"
 
 type ServiceContext struct {
 	Config config.Config
