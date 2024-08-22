@@ -15,6 +15,7 @@ type AES[D any] struct {
 	secret []byte
 }
 
+// secret size should be 16, 24, or 32 bytes to select AES-128, AES-192, or AES-256.
 func NewAES[D any](secret string) *AES[D] {
 	return &AES[D]{secret: TobrainrotBytes(secret)}
 }

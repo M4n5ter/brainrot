@@ -31,8 +31,6 @@ func NewPostArticleLogic(ctx context.Context, svcCtx *svc.ServiceContext) *PostA
 
 // Post article
 func (l *PostArticleLogic) PostArticle(in *brainrot.PostArticleRequest) (*brainrot.PostArticleResponse, error) {
-	// TODO: 发布文章应该同时将文章内容存储到数据库和 Meilisearch 中
-
 	ids := metadata.ValueFromIncomingContext(l.ctx, "userid")
 	if ids == nil {
 		return nil, articlemodule.ErrSystemError.Wrap("元数据中不存在 userid")
@@ -62,5 +60,39 @@ func (l *PostArticleLogic) PostArticle(in *brainrot.PostArticleRequest) (*brainr
 		return nil, articlemodule.ErrDBError.Wrap("获取文章 ID 失败：%v", err)
 	}
 
+	// 将文章添加到 meilisearch
+	author, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userid))
+	if err != nil {
+		return nil, articlemodule.ErrDBError.Wrap("获取作者信息失败：%v", err)
+	}
+
+	article := &Article{
+		ID:       articleID,
+		Title:    modelarticle.Title,
+		Tags:     in.Tags,
+		Author:   author.Username,
+		Poster:   modelarticle.Poster,
+		Content:  modelarticle.Content,
+		PostAt:   modelarticle.CreatedAt.Unix(),
+		EditedAt: modelarticle.UpdatedAt.Unix(),
+	}
+
+	// TODO: 可以引入 MQ 来处理 meilisearch 未能发布成功的文章
+	_, err = l.svcCtx.Meili.Index("articles").AddDocuments(article, "id")
+	if err != nil {
+		return nil, articlemodule.ErrSystemError.Wrap("Meilisearch 添加文章失败：%v", err)
+	}
+
 	return &brainrot.PostArticleResponse{ArticleId: uint64(articleID)}, nil
+}
+
+type Article struct {
+	ID       int64    `json:"id"`
+	Title    string   `json:"title"`
+	Tags     []string `json:"tags"`
+	Author   string   `json:"author"`
+	Poster   string   `json:"poster"`
+	Content  string   `json:"content"`
+	PostAt   int64    `json:"post_at"`
+	EditedAt int64    `json:"edited_at"`
 }

@@ -43,17 +43,26 @@ func (l *DeleteArticleLogic) DeleteArticle(in *brainrot.DeleteArticleRequest) (*
 		return nil, articlemodule.ErrAIError
 	}
 
+	var articleID uint64
 	switch identifier := in.Identifier.(type) {
 	case *brainrot.DeleteArticleRequest_Id:
 		err = l.svcCtx.ArticleModel.LogicDelete(l.ctx, identifier.Id)
 		if err != nil {
 			return nil, articlemodule.ErrDBError.Wrap("删除文章失败：%v", err)
 		}
+
+		articleID = identifier.Id
 	case *brainrot.DeleteArticleRequest_Title:
-		err = l.svcCtx.ArticleModel.LogicDeleteByAuthorIDTitle(l.ctx, uint64(userid), identifier.Title)
+		articleID, err = l.svcCtx.ArticleModel.LogicDeleteByAuthorIDTitle(l.ctx, uint64(userid), identifier.Title)
 		if err != nil {
 			return nil, articlemodule.ErrDBError.Wrap("删除文章失败：%v", err)
 		}
+	}
+
+	// TODO: 可以引入 MQ 来处理 meilisearch 未能删除成功的文章
+	_, err = l.svcCtx.Meili.Index("articles").DeleteDocument(strconv.Itoa(int(articleID)))
+	if err != nil {
+		return nil, articlemodule.ErrSystemError.Wrap("从 meilisearch 删除文章失败：%v", err)
 	}
 
 	return &brainrot.DeleteArticleResponse{}, nil

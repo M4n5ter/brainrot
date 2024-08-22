@@ -2,8 +2,10 @@ package userlogic
 
 import (
 	"context"
+	"errors"
 
 	"brainrot/gen/pb/brainrot"
+	"brainrot/model"
 	"brainrot/pkg/util/validator"
 	"brainrot/rpc/brainrot/internal/svc"
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
@@ -13,22 +15,22 @@ import (
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type SighInLogic struct {
+type SignInLogic struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 	logx.Logger
 }
 
-func NewSighInLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SighInLogic {
-	return &SighInLogic{
+func NewSignInLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SignInLogic {
+	return &SignInLogic{
 		ctx:    ctx,
 		svcCtx: svcCtx,
 		Logger: logx.WithContext(ctx),
 	}
 }
 
-// Sigh in
-func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInResponse, error) {
+// Sign in
+func (l *SignInLogic) SignIn(in *brainrot.SignInRequest) (*brainrot.SignInResponse, error) {
 	if in.Email == "" || in.Password == "" {
 		return nil, usermodule.ErrLackNecessaryField.Wrap("邮箱或密码为空")
 	}
@@ -39,14 +41,17 @@ func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInRespon
 
 	usermodel, err := l.svcCtx.UserModel.FindOneByEmail(l.ctx, in.Email)
 	if err != nil || usermodel == nil {
-		return nil, usermodule.ErrDBError.Wrap("根据邮箱查询用户失败，邮箱为：%s", in.Email)
+		if errors.Is(err, model.ErrNotFound) {
+			return nil, usermodule.ErrDBUserNotFound
+		}
+		return nil, usermodule.ErrDBError.Wrap("根据邮箱查询用户失败，邮箱为：%s，错误为：%v", in.Email, err)
 	}
 
 	if usermodel.Password != in.Password {
 		return nil, usermodule.ErrInvalidInput.Wrap("密码错误，邮箱为：%s", in.Email)
 	}
 
-	resp := &brainrot.SighInResponse{}
+	resp := &brainrot.SignInResponse{}
 	err = copier.Copy(resp, usermodel)
 	if err != nil {
 		return nil, usermodule.ErrCopierCopy.Wrap("拷贝用户信息失败")
@@ -58,7 +63,7 @@ func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInRespon
 			return nil, err
 		}
 
-		macfields := &brainrot.SighInResponse_MacFields{
+		macfields := &brainrot.SignInResponse_MacFields{
 			MacFields: &brainrot.MacFields{
 				MacId:        macresp.ID,
 				MacKey:       macresp.Key,
@@ -67,6 +72,8 @@ func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInRespon
 		}
 		resp.Auth = macfields
 		resp.RefreshToken = macresp.RefreshToken
+		resp.TokenExpire = l.svcCtx.Config.MAC.KeyExpire
+		resp.RefreshTokenExpire = l.svcCtx.Config.MAC.RefreshExpire
 
 	} else if l.svcCtx.Config.APIKey.Strategy.Enable {
 		apiresp, err := l.svcCtx.GenAPIKeyResponse(int64(usermodel.Id))
@@ -74,11 +81,13 @@ func (l *SighInLogic) SighIn(in *brainrot.SighInRequest) (*brainrot.SighInRespon
 			return nil, err
 		}
 
-		apikey := &brainrot.SighInResponse_ApiKey{
+		apikey := &brainrot.SignInResponse_ApiKey{
 			ApiKey: apiresp.Key,
 		}
 		resp.Auth = apikey
 		resp.RefreshToken = apiresp.RefreshToken
+		resp.TokenExpire = l.svcCtx.Config.APIKey.KeyExpire
+		resp.RefreshTokenExpire = l.svcCtx.Config.APIKey.RefreshExpire
 	} else {
 		return nil, usermodule.ErrServerError.Wrap("MAC 和 APIKey 策略均未启用")
 	}

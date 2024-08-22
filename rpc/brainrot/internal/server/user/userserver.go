@@ -22,16 +22,16 @@ func NewUserServer(svcCtx *svc.ServiceContext) *UserServer {
 	}
 }
 
-// Sigh up
-func (s *UserServer) SighUp(ctx context.Context, in *brainrot.SighUpRequest) (*brainrot.SighUpResponse, error) {
-	l := userlogic.NewSighUpLogic(ctx, s.svcCtx)
-	return l.SighUp(in)
+// Sign up
+func (s *UserServer) SignUp(ctx context.Context, in *brainrot.SignUpRequest) (*brainrot.SignUpResponse, error) {
+	l := userlogic.NewSignUpLogic(ctx, s.svcCtx)
+	return l.SignUp(in)
 }
 
-// Sigh in
-func (s *UserServer) SighIn(ctx context.Context, in *brainrot.SighInRequest) (*brainrot.SighInResponse, error) {
-	l := userlogic.NewSighInLogic(ctx, s.svcCtx)
-	return l.SighIn(in)
+// Sign in
+func (s *UserServer) SignIn(ctx context.Context, in *brainrot.SignInRequest) (*brainrot.SignInResponse, error) {
+	l := userlogic.NewSignInLogic(ctx, s.svcCtx)
+	return l.SignIn(in)
 }
 
 // Update user

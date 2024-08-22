@@ -26,18 +26,18 @@ type (
 	SearchUsersRequest       = brainrot.SearchUsersRequest
 	SearchUsersResponse      = brainrot.SearchUsersResponse
 	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
-	SighInRequest            = brainrot.SighInRequest
-	SighInResponse           = brainrot.SighInResponse
-	SighUpRequest            = brainrot.SighUpRequest
-	SighUpResponse           = brainrot.SighUpResponse
+	SignInRequest            = brainrot.SignInRequest
+	SignInResponse           = brainrot.SignInResponse
+	SignUpRequest            = brainrot.SignUpRequest
+	SignUpResponse           = brainrot.SignUpResponse
 	UpdateUserRequest        = brainrot.UpdateUserRequest
 	UpdateUserResponse       = brainrot.UpdateUserResponse
 
 	User interface {
-		// Sigh up
-		SighUp(ctx context.Context, in *SighUpRequest, opts ...grpc.CallOption) (*SighUpResponse, error)
-		// Sigh in
-		SighIn(ctx context.Context, in *SighInRequest, opts ...grpc.CallOption) (*SighInResponse, error)
+		// Sign up
+		SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
+		// Sign in
+		SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
 		// Update user
 		Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 		// Search users
@@ -57,16 +57,16 @@ func NewUser(cli zrpc.Client) User {
 	}
 }
 
-// Sigh up
-func (m *defaultUser) SighUp(ctx context.Context, in *SighUpRequest, opts ...grpc.CallOption) (*SighUpResponse, error) {
+// Sign up
+func (m *defaultUser) SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error) {
 	client := brainrot.NewUserClient(m.cli.Conn())
-	return client.SighUp(ctx, in, opts...)
+	return client.SignUp(ctx, in, opts...)
 }
 
-// Sigh in
-func (m *defaultUser) SighIn(ctx context.Context, in *SighInRequest, opts ...grpc.CallOption) (*SighInResponse, error) {
+// Sign in
+func (m *defaultUser) SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
 	client := brainrot.NewUserClient(m.cli.Conn())
-	return client.SighIn(ctx, in, opts...)
+	return client.SignIn(ctx, in, opts...)
 }
 
 // Update user

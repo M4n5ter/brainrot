@@ -10,7 +10,6 @@ MysqlDataSource: root:123456@tcp(127.0.0.1:3306)/brainrot?charset=utf8mb4&parseT
 
 Meilisearch:
   Host: http://localhost:7700
-  APIKey:
 
 Redis:
   Host: 127.0.0.1:6379
@@ -36,12 +35,14 @@ Cache:
 APIKey:
   Secret: "brainrot"
   RefreshExpire: 2592000 # 30 days
+  RefreshSecret: "brainrotsecret.."
   KeyPrefix: "oauth2:apikey:"
+  KeyExpire: 86400 # 1 day
   Strategy:
     Enable: true
     Whitelist:
-      - "/v1/brainrot/user/sigh-up"
-      - "/v1/brainrot/user/sigh-in"
+      - "/v1/brainrot/user/sign-up"
+      - "/v1/brainrot/user/sign-in"
 
 Log:
   Stat: false

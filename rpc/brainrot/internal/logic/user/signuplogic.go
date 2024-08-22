@@ -2,7 +2,7 @@ package userlogic
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"brainrot/gen/pb/brainrot"
 	"brainrot/model"
@@ -10,20 +10,21 @@ import (
 	"brainrot/rpc/brainrot/internal/svc"
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/copier"
 
 	"github.com/zeromicro/go-zero/core/jsonx"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-type SighUpLogic struct {
+type SignUpLogic struct {
 	ctx    context.Context
 	svcCtx *svc.ServiceContext
 	logx.Logger
 }
 
-func NewSighUpLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SighUpLogic {
-	return &SighUpLogic{
+func NewSignUpLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SignUpLogic {
+	return &SignUpLogic{
 		ctx:    ctx,
 		svcCtx: svcCtx,
 		Logger: logx.WithContext(ctx),
@@ -31,9 +32,9 @@ func NewSighUpLogic(ctx context.Context, svcCtx *svc.ServiceContext) *SighUpLogi
 }
 
 // Creates a new user
-func (l *SighUpLogic) SighUp(in *brainrot.SighUpRequest) (*brainrot.SighUpResponse, error) {
+func (l *SignUpLogic) SignUp(in *brainrot.SignUpRequest) (*brainrot.SignUpResponse, error) {
 	if in.Username == "" || in.Email == "" || in.Password == "" {
-		return nil, fmt.Errorf("缺少用户名/邮箱/密码: %w", usermodule.ErrLackNecessaryField)
+		return nil, usermodule.ErrLackNecessaryField.Wrap("缺少用户名/邮箱/密码")
 	}
 
 	if !validator.IsEmail(in.Email) {
@@ -61,6 +62,12 @@ func (l *SighUpLogic) SighUp(in *brainrot.SighUpRequest) (*brainrot.SighUpRespon
 
 	ret, err := l.svcCtx.UserModel.Insert(l.ctx, usermodel)
 	if err != nil {
+		var mysqlErr *mysql.MySQLError
+		if errors.As(err, &mysqlErr) {
+			if mysqlErr.Number == 1062 {
+				return nil, usermodule.ErrDBDuplicateUsernameOrEmail
+			}
+		}
 		return nil, usermodule.ErrDBError.Wrap("%v", err)
 	}
 
@@ -69,10 +76,5 @@ func (l *SighUpLogic) SighUp(in *brainrot.SighUpRequest) (*brainrot.SighUpRespon
 		return nil, usermodule.ErrDBError.Wrap("插入数据失败")
 	}
 
-	id, err := ret.LastInsertId()
-	if err != nil {
-		return nil, usermodule.ErrDBError.Wrap("获取插入数据的 ID 失败")
-	}
-
-	return &brainrot.SighUpResponse{UserId: uint64(id)}, nil
+	return &brainrot.SignUpResponse{}, nil
 }

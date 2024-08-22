@@ -56,7 +56,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 
 // User start
 
-message SighUpRequest {
+message SignUpRequest {
   string username = 1;
   string email = 2;
   string password = 3;
@@ -75,21 +75,20 @@ message SighUpRequest {
     }
   };
 }
-message SighUpResponse {
-  uint64 user_id = 1;
+message SignUpResponse {
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
       description: "用户注册响应体"
-      example: '{"code": 0, "message": "ok", "data": {"user_id": 1}}'
+      example: '{"code": 0, "message": "ok"}'
     }
   };
 }
-message SighInRequest {
+message SignInRequest {
   string email = 1;
   string password = 2;
 }
-message SighInResponse {
+message SignInResponse {
   string username = 1;
   string avatar_url = 2;
   oneof auth {
@@ -97,6 +96,8 @@ message SighInResponse {
     MacFields mac_fields = 4;
   }
   string refresh_token = 5;
+  int64 token_expire = 6;
+  int64 refresh_token_expire = 7;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
@@ -152,6 +153,8 @@ message RefreshTokenResponse {
     MacFields mac_fields = 2;
   }
   string refresh_token = 3;
+  int64 token_expire = 4;
+  int64 refresh_token_expire = 5;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
     json_schema: {
       type: OBJECT
@@ -173,6 +176,7 @@ message PostArticleRequest {
   string title = 1;
   string content = 2;
   repeated string tags = 3;
+  string poster = 4;
 }
 message PostArticleResponse {
   uint64 article_id = 1;
@@ -206,10 +210,10 @@ service Ping {
 }
 
 service User {
-  // Sigh up
-  rpc SighUp(SighUpRequest) returns (SighUpResponse) {
+  // Sign up
+  rpc SignUp(SignUpRequest) returns (SignUpResponse) {
     option (google.api.http) = {
-      post: "/v1/brainrot/user/sigh-up"
+      post: "/v1/brainrot/user/sign-up"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -220,7 +224,7 @@ service User {
           value: {
             description: "注册成功"
             schema: {
-              json_schema: {ref: ".brainrot.v1.SighUpResponse"}
+              json_schema: {ref: ".brainrot.v1.SignUpResponse"}
             }
           }
         }
@@ -228,10 +232,10 @@ service User {
     };
   }
 
-  // Sigh in
-  rpc SighIn(SighInRequest) returns (SighInResponse) {
+  // Sign in
+  rpc SignIn(SignInRequest) returns (SignInResponse) {
     option (google.api.http) = {
-      post: "/v1/brainrot/user/sigh-in"
+      post: "/v1/brainrot/user/sign-in"
       body: "*"
     };
     option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
@@ -242,7 +246,7 @@ service User {
           value: {
             description: "登录成功"
             schema: {
-              json_schema: {ref: ".brainrot.v1.SighInResponse"}
+              json_schema: {ref: ".brainrot.v1.SignInResponse"}
             }
           }
         }

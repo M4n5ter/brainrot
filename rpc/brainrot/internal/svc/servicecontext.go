@@ -35,7 +35,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 			r.Type = c.Redis.Type
 			r.Pass = c.Redis.Pass
 		}),
-		Meili: meilisearch.NewClient(meilisearch.ClientConfig{Host: c.Meilisearch.Host, APIKey: c.Meilisearch.APIKey}),
+		Meili: meilisearch.NewClient(c.Meilisearch.ToClientConfig()),
 	}
 }
 
@@ -46,14 +46,18 @@ func (svcCtx *ServiceContext) GenMACResponse(userid int64) (resp MACResponse, er
 	}
 
 	htable := fmt.Sprintf("%s%s", svcCtx.Config.MAC.KeyPrefix, macID)
-	_, err = svcCtx.Redis.ScriptRun(usermodule.SetScript, []string{htable, strconv.Itoa(int(svcCtx.Config.MAC.RefreshExpire))}, "key", macKey, "userid", strconv.Itoa(int(userid)))
-	if err != nil && errors.Is(err, redis.Nil) {
+	_, err = svcCtx.Redis.ScriptRun(usermodule.SetScript, []string{htable, strconv.Itoa(int(svcCtx.Config.MAC.KeyExpire))}, "key", macKey, "userid", strconv.Itoa(int(userid)))
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return resp, usermodule.ErrDBError.Wrap("保存 MAC ID 和 Key 失败，错误为：%v", err)
 	}
 
+	refreshExpire := defaultRefreshExpire
+	if svcCtx.Config.APIKey.RefreshExpire != 0 {
+		refreshExpire = svcCtx.Config.APIKey.RefreshExpire
+	}
 	refreshToken := RefreshToken{
 		UserID:   userid,
-		ExpireAt: time.Now().Unix() + svcCtx.Config.APIKey.RefreshExpire,
+		ExpireAt: time.Now().Unix() + refreshExpire,
 	}
 	aes := util.NewAES[RefreshToken](svcCtx.Config.MAC.RefreshSecret)
 	token, err := aes.Encrypt(refreshToken)
@@ -82,19 +86,23 @@ func (svcCtx *ServiceContext) GenAPIKeyResponse(userid int64) (resp APIKeyRespon
 	}
 
 	htable := fmt.Sprintf("%s%s", svcCtx.Config.APIKey.KeyPrefix, key)
-	_, err = svcCtx.Redis.ScriptRun(usermodule.SetScript, []string{htable, strconv.Itoa(int(svcCtx.Config.APIKey.RefreshExpire))}, "userid", strconv.Itoa(int(userid)))
-	if err != nil && errors.Is(err, redis.Nil) {
+	_, err = svcCtx.Redis.ScriptRun(usermodule.SetScript, []string{htable, strconv.Itoa(int(svcCtx.Config.APIKey.KeyExpire))}, "userid", strconv.Itoa(int(userid)))
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return resp, usermodule.ErrDBError.Wrap("保存 API Key 失败，错误为：%v", err)
 	}
 
+	refreshExpire := defaultRefreshExpire
+	if svcCtx.Config.APIKey.RefreshExpire != 0 {
+		refreshExpire = svcCtx.Config.APIKey.RefreshExpire
+	}
 	refreshToken := RefreshToken{
 		UserID:   userid,
-		ExpireAt: time.Now().Unix() + svcCtx.Config.APIKey.RefreshExpire,
+		ExpireAt: time.Now().Unix() + refreshExpire,
 	}
 	aes := util.NewAES[RefreshToken](svcCtx.Config.APIKey.RefreshSecret)
 	token, err := aes.Encrypt(refreshToken)
 	if err != nil {
-		return resp, usermodule.ErrSystemError.Wrap("生成 Refresh Token 失败")
+		return resp, usermodule.ErrSystemError.Wrap("生成 Refresh Token 失败：%v", err)
 	}
 
 	resp.Key = key
@@ -111,3 +119,5 @@ type RefreshToken struct {
 	UserID   int64 `json:"userid"`
 	ExpireAt int64 `json:"expire_at"`
 }
+
+const defaultRefreshExpire int64 = 907200

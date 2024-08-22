@@ -191,15 +191,15 @@
         ]
       }
     },
-    "/v1/brainrot/user/sigh-in": {
+    "/v1/brainrot/user/sign-in": {
       "post": {
         "summary": "用户登录",
-        "operationId": "User_SighIn",
+        "operationId": "User_SignIn",
         "responses": {
           "200": {
             "description": "登录成功",
             "schema": {
-              "$ref": "#/definitions/v1SighInResponse"
+              "$ref": "#/definitions/v1SignInResponse"
             }
           },
           "default": {
@@ -215,7 +215,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1SighInRequest"
+              "$ref": "#/definitions/v1SignInRequest"
             }
           }
         ],
@@ -224,15 +224,15 @@
         ]
       }
     },
-    "/v1/brainrot/user/sigh-up": {
+    "/v1/brainrot/user/sign-up": {
       "post": {
         "summary": "将一个用户注册到数据库",
-        "operationId": "User_SighUp",
+        "operationId": "User_SignUp",
         "responses": {
           "200": {
             "description": "注册成功",
             "schema": {
-              "$ref": "#/definitions/v1SighUpResponse"
+              "$ref": "#/definitions/v1SignUpResponse"
             }
           },
           "default": {
@@ -249,7 +249,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/v1SighUpRequest"
+              "$ref": "#/definitions/v1SignUpRequest"
             }
           }
         ],
@@ -387,6 +387,9 @@
           "items": {
             "type": "string"
           }
+        },
+        "poster": {
+          "type": "string"
         }
       }
     },
@@ -431,6 +434,14 @@
         },
         "refreshToken": {
           "type": "string"
+        },
+        "tokenExpire": {
+          "type": "string",
+          "format": "int64"
+        },
+        "refreshTokenExpire": {
+          "type": "string",
+          "format": "int64"
         }
       },
       "description": "刷新令牌响应体"
@@ -475,7 +486,7 @@
       },
       "description": "搜索用户响应体"
     },
-    "v1SighInRequest": {
+    "v1SignInRequest": {
       "type": "object",
       "properties": {
         "email": {
@@ -486,7 +497,7 @@
         }
       }
     },
-    "v1SighInResponse": {
+    "v1SignInResponse": {
       "type": "object",
       "format": "object",
       "example": {
@@ -516,11 +527,19 @@
         },
         "refreshToken": {
           "type": "string"
+        },
+        "tokenExpire": {
+          "type": "string",
+          "format": "int64"
+        },
+        "refreshTokenExpire": {
+          "type": "string",
+          "format": "int64"
         }
       },
       "description": "用户登录响应体"
     },
-    "v1SighUpRequest": {
+    "v1SignUpRequest": {
       "type": "object",
       "format": "object",
       "properties": {
@@ -551,21 +570,12 @@
         "password"
       ]
     },
-    "v1SighUpResponse": {
+    "v1SignUpResponse": {
       "type": "object",
       "format": "object",
       "example": {
         "code": 0,
-        "message": "ok",
-        "data": {
-          "user_id": 1
-        }
-      },
-      "properties": {
-        "userId": {
-          "type": "string",
-          "format": "uint64"
-        }
+        "message": "ok"
       },
       "description": "用户注册响应体"
     },

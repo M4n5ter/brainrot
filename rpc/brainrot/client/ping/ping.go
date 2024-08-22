@@ -26,10 +26,10 @@ type (
 	SearchUsersRequest       = brainrot.SearchUsersRequest
 	SearchUsersResponse      = brainrot.SearchUsersResponse
 	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
-	SighInRequest            = brainrot.SighInRequest
-	SighInResponse           = brainrot.SighInResponse
-	SighUpRequest            = brainrot.SighUpRequest
-	SighUpResponse           = brainrot.SighUpResponse
+	SignInRequest            = brainrot.SignInRequest
+	SignInResponse           = brainrot.SignInResponse
+	SignUpRequest            = brainrot.SignUpRequest
+	SignUpResponse           = brainrot.SignUpResponse
 	UpdateUserRequest        = brainrot.UpdateUserRequest
 	UpdateUserResponse       = brainrot.UpdateUserResponse
 

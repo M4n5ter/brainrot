@@ -60,8 +60,10 @@ func (l *RefreshTokenLogic) RefreshToken(in *brainrot.RefreshTokenRequest) (*bra
 			},
 		}
 		return &brainrot.RefreshTokenResponse{
-			Auth:         macfields,
-			RefreshToken: macresp.RefreshToken,
+			Auth:               macfields,
+			RefreshToken:       macresp.RefreshToken,
+			TokenExpire:        l.svcCtx.Config.MAC.KeyExpire,
+			RefreshTokenExpire: l.svcCtx.Config.MAC.RefreshExpire,
 		}, err
 	} else if l.svcCtx.Config.APIKey.Strategy.Enable {
 		apiresp, err := l.svcCtx.GenAPIKeyResponse(refreshToken.UserID)
@@ -73,8 +75,10 @@ func (l *RefreshTokenLogic) RefreshToken(in *brainrot.RefreshTokenRequest) (*bra
 			ApiKey: apiresp.Key,
 		}
 		return &brainrot.RefreshTokenResponse{
-			Auth:         apikey,
-			RefreshToken: apiresp.RefreshToken,
+			Auth:               apikey,
+			RefreshToken:       apiresp.RefreshToken,
+			TokenExpire:        l.svcCtx.Config.APIKey.KeyExpire,
+			RefreshTokenExpire: l.svcCtx.Config.APIKey.RefreshExpire,
 		}, err
 	}
 	return nil, usermodule.ErrServerError.Wrap("MAC 和 APIKey 策略均未启用")

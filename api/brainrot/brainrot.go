@@ -11,6 +11,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/gofiber/fiber/v2/middleware/compress"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/etag"
 	"github.com/gofiber/fiber/v2/middleware/helmet"
 	"github.com/gofiber/fiber/v2/middleware/idempotency"
@@ -43,11 +44,21 @@ func main() {
 		return
 	}
 
+	err = brainrot.RegisterArticleHandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	log.Printf("Starting gateway server at %s...\n", "8090")
 	gwApp := fiber.New()
 
 	gwApp.Use(compress.New())
 	gwApp.Use(helmet.New())
+	gwApp.Use(cors.New(cors.Config{
+		AllowOrigins:     "http://localhost:5173", // 允许的前端地址
+		AllowCredentials: true,
+	}))
 	gwApp.Use(idempotency.New())
 	gwApp.Use(etag.New())
 	gwApp.Use(swagger.New())
