@@ -34,6 +34,12 @@ func (s *UserServer) SignIn(ctx context.Context, in *brainrot.SignInRequest) (*b
 	return l.SignIn(in)
 }
 
+// Get current user info
+func (s *UserServer) GetCurrentUserInfo(ctx context.Context, in *brainrot.GetCurrentUserInfoRequest) (*brainrot.GetCurrentUserInfoResponse, error) {
+	l := userlogic.NewGetCurrentUserInfoLogic(ctx, s.svcCtx)
+	return l.GetCurrentUserInfo(in)
+}
+
 // Update user
 func (s *UserServer) Update(ctx context.Context, in *brainrot.UpdateUserRequest) (*brainrot.UpdateUserResponse, error) {
 	l := userlogic.NewUpdateLogic(ctx, s.svcCtx)

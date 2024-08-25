@@ -125,6 +125,29 @@
         ]
       }
     },
+    "/v1/brainrot/user/current": {
+      "get": {
+        "summary": "获取当前用户信息",
+        "operationId": "User_GetCurrentUserInfo",
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "schema": {
+              "$ref": "#/definitions/v1GetCurrentUserInfoResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "tags": [
+          "User"
+        ]
+      }
+    },
     "/v1/brainrot/user/refresh-token": {
       "post": {
         "summary": "刷新令牌",
@@ -355,6 +378,39 @@
     },
     "v1DeleteArticleResponse": {
       "type": "object"
+    },
+    "v1GetCurrentUserInfoResponse": {
+      "type": "object",
+      "format": "object",
+      "example": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "username": "m4n5ter",
+          "email": "email",
+          "avatar_url": "https://example.com/avatar.jpg",
+          "introduction": "introduction",
+          "profile_info": "{}"
+        }
+      },
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "avatarUrl": {
+          "type": "string"
+        },
+        "introduction": {
+          "type": "string"
+        },
+        "profileInfo": {
+          "type": "string"
+        }
+      },
+      "description": "获取当前用户信息响应体"
     },
     "v1MacFields": {
       "type": "object",

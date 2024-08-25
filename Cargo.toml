@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = ["collab-core"]
+
+[workspace.dependencies]
+anyhow = "1.0"
+fastwebsockets = "0.8"
+http-body-util = "0.1"
+hyper = "1.4"
+hyper-util = "0.1"
+rustc-hash = "2.0"
+tokio = "1.39"
+url = "2.5"

@@ -1,6 +1,8 @@
 # dirs
+.vscode
 .idea
 temp/
+target/
 
 
 # files

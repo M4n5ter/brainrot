@@ -13,25 +13,27 @@ import (
 )
 
 type (
-	DeleteArticleRequest     = brainrot.DeleteArticleRequest
-	DeleteArticleResponse    = brainrot.DeleteArticleResponse
-	Error                    = brainrot.Error
-	MacFields                = brainrot.MacFields
-	PingRequest              = brainrot.PingRequest
-	PingResponse             = brainrot.PingResponse
-	PostArticleRequest       = brainrot.PostArticleRequest
-	PostArticleResponse      = brainrot.PostArticleResponse
-	RefreshTokenRequest      = brainrot.RefreshTokenRequest
-	RefreshTokenResponse     = brainrot.RefreshTokenResponse
-	SearchUsersRequest       = brainrot.SearchUsersRequest
-	SearchUsersResponse      = brainrot.SearchUsersResponse
-	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
-	SignInRequest            = brainrot.SignInRequest
-	SignInResponse           = brainrot.SignInResponse
-	SignUpRequest            = brainrot.SignUpRequest
-	SignUpResponse           = brainrot.SignUpResponse
-	UpdateUserRequest        = brainrot.UpdateUserRequest
-	UpdateUserResponse       = brainrot.UpdateUserResponse
+	DeleteArticleRequest       = brainrot.DeleteArticleRequest
+	DeleteArticleResponse      = brainrot.DeleteArticleResponse
+	Error                      = brainrot.Error
+	GetCurrentUserInfoRequest  = brainrot.GetCurrentUserInfoRequest
+	GetCurrentUserInfoResponse = brainrot.GetCurrentUserInfoResponse
+	MacFields                  = brainrot.MacFields
+	PingRequest                = brainrot.PingRequest
+	PingResponse               = brainrot.PingResponse
+	PostArticleRequest         = brainrot.PostArticleRequest
+	PostArticleResponse        = brainrot.PostArticleResponse
+	RefreshTokenRequest        = brainrot.RefreshTokenRequest
+	RefreshTokenResponse       = brainrot.RefreshTokenResponse
+	SearchUsersRequest         = brainrot.SearchUsersRequest
+	SearchUsersResponse        = brainrot.SearchUsersResponse
+	SearchUsersResponse_User   = brainrot.SearchUsersResponse_User
+	SignInRequest              = brainrot.SignInRequest
+	SignInResponse             = brainrot.SignInResponse
+	SignUpRequest              = brainrot.SignUpRequest
+	SignUpResponse             = brainrot.SignUpResponse
+	UpdateUserRequest          = brainrot.UpdateUserRequest
+	UpdateUserResponse         = brainrot.UpdateUserResponse
 
 	Ping interface {
 		// Ping is a simple health check

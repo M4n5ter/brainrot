@@ -1,0 +1,19 @@
+[package]
+name = "collab-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = { workspace = true }
+fastwebsockets = { workspace = true, features = ["upgrade"] }
+http-body-util = { workspace = true }
+hyper = { workspace = true, features = ["server"] }
+hyper-util = { workspace = true }
+rustc-hash = { workspace = true }
+tokio = { workspace = true, features = [
+    "macros",
+    "net",
+    "rt",
+    "rt-multi-thread",
+] }
+url = { workspace = true }

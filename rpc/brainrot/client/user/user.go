@@ -13,31 +13,35 @@ import (
 )
 
 type (
-	DeleteArticleRequest     = brainrot.DeleteArticleRequest
-	DeleteArticleResponse    = brainrot.DeleteArticleResponse
-	Error                    = brainrot.Error
-	MacFields                = brainrot.MacFields
-	PingRequest              = brainrot.PingRequest
-	PingResponse             = brainrot.PingResponse
-	PostArticleRequest       = brainrot.PostArticleRequest
-	PostArticleResponse      = brainrot.PostArticleResponse
-	RefreshTokenRequest      = brainrot.RefreshTokenRequest
-	RefreshTokenResponse     = brainrot.RefreshTokenResponse
-	SearchUsersRequest       = brainrot.SearchUsersRequest
-	SearchUsersResponse      = brainrot.SearchUsersResponse
-	SearchUsersResponse_User = brainrot.SearchUsersResponse_User
-	SignInRequest            = brainrot.SignInRequest
-	SignInResponse           = brainrot.SignInResponse
-	SignUpRequest            = brainrot.SignUpRequest
-	SignUpResponse           = brainrot.SignUpResponse
-	UpdateUserRequest        = brainrot.UpdateUserRequest
-	UpdateUserResponse       = brainrot.UpdateUserResponse
+	DeleteArticleRequest       = brainrot.DeleteArticleRequest
+	DeleteArticleResponse      = brainrot.DeleteArticleResponse
+	Error                      = brainrot.Error
+	GetCurrentUserInfoRequest  = brainrot.GetCurrentUserInfoRequest
+	GetCurrentUserInfoResponse = brainrot.GetCurrentUserInfoResponse
+	MacFields                  = brainrot.MacFields
+	PingRequest                = brainrot.PingRequest
+	PingResponse               = brainrot.PingResponse
+	PostArticleRequest         = brainrot.PostArticleRequest
+	PostArticleResponse        = brainrot.PostArticleResponse
+	RefreshTokenRequest        = brainrot.RefreshTokenRequest
+	RefreshTokenResponse       = brainrot.RefreshTokenResponse
+	SearchUsersRequest         = brainrot.SearchUsersRequest
+	SearchUsersResponse        = brainrot.SearchUsersResponse
+	SearchUsersResponse_User   = brainrot.SearchUsersResponse_User
+	SignInRequest              = brainrot.SignInRequest
+	SignInResponse             = brainrot.SignInResponse
+	SignUpRequest              = brainrot.SignUpRequest
+	SignUpResponse             = brainrot.SignUpResponse
+	UpdateUserRequest          = brainrot.UpdateUserRequest
+	UpdateUserResponse         = brainrot.UpdateUserResponse
 
 	User interface {
 		// Sign up
 		SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 		// Sign in
 		SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+		// Get current user info
+		GetCurrentUserInfo(ctx context.Context, in *GetCurrentUserInfoRequest, opts ...grpc.CallOption) (*GetCurrentUserInfoResponse, error)
 		// Update user
 		Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 		// Search users
@@ -67,6 +71,12 @@ func (m *defaultUser) SignUp(ctx context.Context, in *SignUpRequest, opts ...grp
 func (m *defaultUser) SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error) {
 	client := brainrot.NewUserClient(m.cli.Conn())
 	return client.SignIn(ctx, in, opts...)
+}
+
+// Get current user info
+func (m *defaultUser) GetCurrentUserInfo(ctx context.Context, in *GetCurrentUserInfoRequest, opts ...grpc.CallOption) (*GetCurrentUserInfoResponse, error) {
+	client := brainrot.NewUserClient(m.cli.Conn())
+	return client.GetCurrentUserInfo(ctx, in, opts...)
 }
 
 // Update user

@@ -123,11 +123,12 @@ var Ping_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	User_SignUp_FullMethodName       = "/brainrot.v1.User/SignUp"
-	User_SignIn_FullMethodName       = "/brainrot.v1.User/SignIn"
-	User_Update_FullMethodName       = "/brainrot.v1.User/Update"
-	User_Search_FullMethodName       = "/brainrot.v1.User/Search"
-	User_RefreshToken_FullMethodName = "/brainrot.v1.User/RefreshToken"
+	User_SignUp_FullMethodName             = "/brainrot.v1.User/SignUp"
+	User_SignIn_FullMethodName             = "/brainrot.v1.User/SignIn"
+	User_GetCurrentUserInfo_FullMethodName = "/brainrot.v1.User/GetCurrentUserInfo"
+	User_Update_FullMethodName             = "/brainrot.v1.User/Update"
+	User_Search_FullMethodName             = "/brainrot.v1.User/Search"
+	User_RefreshToken_FullMethodName       = "/brainrot.v1.User/RefreshToken"
 )
 
 // UserClient is the client API for User service.
@@ -138,6 +139,8 @@ type UserClient interface {
 	SignUp(ctx context.Context, in *SignUpRequest, opts ...grpc.CallOption) (*SignUpResponse, error)
 	// Sign in
 	SignIn(ctx context.Context, in *SignInRequest, opts ...grpc.CallOption) (*SignInResponse, error)
+	// Get current user info
+	GetCurrentUserInfo(ctx context.Context, in *GetCurrentUserInfoRequest, opts ...grpc.CallOption) (*GetCurrentUserInfoResponse, error)
 	// Update user
 	Update(ctx context.Context, in *UpdateUserRequest, opts ...grpc.CallOption) (*UpdateUserResponse, error)
 	// Search users
@@ -168,6 +171,16 @@ func (c *userClient) SignIn(ctx context.Context, in *SignInRequest, opts ...grpc
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SignInResponse)
 	err := c.cc.Invoke(ctx, User_SignIn_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userClient) GetCurrentUserInfo(ctx context.Context, in *GetCurrentUserInfoRequest, opts ...grpc.CallOption) (*GetCurrentUserInfoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCurrentUserInfoResponse)
+	err := c.cc.Invoke(ctx, User_GetCurrentUserInfo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -212,6 +225,8 @@ type UserServer interface {
 	SignUp(context.Context, *SignUpRequest) (*SignUpResponse, error)
 	// Sign in
 	SignIn(context.Context, *SignInRequest) (*SignInResponse, error)
+	// Get current user info
+	GetCurrentUserInfo(context.Context, *GetCurrentUserInfoRequest) (*GetCurrentUserInfoResponse, error)
 	// Update user
 	Update(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error)
 	// Search users
@@ -233,6 +248,9 @@ func (UnimplementedUserServer) SignUp(context.Context, *SignUpRequest) (*SignUpR
 }
 func (UnimplementedUserServer) SignIn(context.Context, *SignInRequest) (*SignInResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SignIn not implemented")
+}
+func (UnimplementedUserServer) GetCurrentUserInfo(context.Context, *GetCurrentUserInfoRequest) (*GetCurrentUserInfoResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCurrentUserInfo not implemented")
 }
 func (UnimplementedUserServer) Update(context.Context, *UpdateUserRequest) (*UpdateUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
@@ -296,6 +314,24 @@ func _User_SignIn_Handler(srv interface{}, ctx context.Context, dec func(interfa
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServer).SignIn(ctx, req.(*SignInRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _User_GetCurrentUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCurrentUserInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServer).GetCurrentUserInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: User_GetCurrentUserInfo_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServer).GetCurrentUserInfo(ctx, req.(*GetCurrentUserInfoRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -368,6 +404,10 @@ var User_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SignIn",
 			Handler:    _User_SignIn_Handler,
+		},
+		{
+			MethodName: "GetCurrentUserInfo",
+			Handler:    _User_GetCurrentUserInfo_Handler,
 		},
 		{
 			MethodName: "Update",

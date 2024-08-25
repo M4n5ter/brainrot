@@ -106,6 +106,21 @@ message SignInResponse {
     }
   };
 }
+message GetCurrentUserInfoRequest {}
+message GetCurrentUserInfoResponse {
+  string username = 1;
+  string email = 2;
+  string avatar_url = 3;
+  string introduction = 4;
+  string profile_info = 5;
+  option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
+    json_schema: {
+      type: OBJECT
+      description: "获取当前用户信息响应体"
+      example: '{"code": 0, "message": "ok", "data": {"username": "m4n5ter", "email": "email", "avatar_url": "https://example.com/avatar.jpg", "introduction": "introduction", "profile_info": "{}"}}'
+    }
+  };
+}
 message UpdateUserRequest {
   string username = 1;
   string email = 2;
@@ -247,6 +262,25 @@ service User {
             description: "登录成功"
             schema: {
               json_schema: {ref: ".brainrot.v1.SignInResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Get current user info
+  rpc GetCurrentUserInfo(GetCurrentUserInfoRequest) returns (GetCurrentUserInfoResponse) {
+    option (google.api.http) = {get: "/v1/brainrot/user/current"};
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取当前用户信息"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "获取成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.GetCurrentUserInfoResponse"}
             }
           }
         }
