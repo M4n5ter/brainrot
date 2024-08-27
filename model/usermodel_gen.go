@@ -50,7 +50,7 @@ type (
 		AvatarUrl    string    `db:"avatar_url"`
 		Introduction string    `db:"introduction"`
 		ProfileInfo  string    `db:"profile_info"`
-		Status       int64     `db:"status"` // 1: active, 0: deleted
+		Status       int64     `db:"status"` // 0: active, 1: deleted
 		CreatedAt    time.Time `db:"created_at"`
 		UpdatedAt    time.Time `db:"updated_at"`
 	}
@@ -206,7 +206,7 @@ func (m *defaultUserModel) FindPageListByIdDESC(ctx context.Context, preMinID, p
 	where := " "
 
 	if preMinID > 0 {
-		where = " WHERE `id` < ? and `status` = 1"
+		where = " WHERE `id` < ? and `status` = 0"
 		args = append(args, preMinID)
 	}
 
@@ -230,7 +230,7 @@ func (m *defaultUserModel) FindPageListByIdASC(ctx context.Context, preMaxID, pa
 	where := " "
 
 	if preMaxID > 0 {
-		where = " WHERE `id` > ? and `status` = 1"
+		where = " WHERE `id` > ? and `status` = 0"
 		args = append(args, preMaxID)
 	}
 

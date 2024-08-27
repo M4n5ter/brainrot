@@ -1,11 +1,12 @@
 CREATE TABLE article (
     id BIGINT UNSIGNED AUTO_INCREMENT,
     author_id INT UNSIGNED NOT NULL,
+    author VARCHAR(50) NOT NULL, -- The redundancy can help us reduce queries
     title VARCHAR(255) NOT NULL,
     content MEDIUMTEXT NOT NULL,
     tags VARCHAR(255) NOT NULL DEFAULT '',
     poster VARCHAR(255) NOT NULL DEFAULT '',
-    status TINYINT NOT NULL DEFAULT 1 COMMENT '1: active, 0: deleted',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0: active, 1: deleted',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

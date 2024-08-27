@@ -203,6 +203,10 @@ message DeleteArticleRequest {
   }
 }
 message DeleteArticleResponse {}
+message RefreshAllArticlesRequest {
+  // TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.
+}
+message RefreshAllArticlesResponse {}
 // Article end
 
 // Ping start
@@ -393,6 +397,28 @@ service Article {
             description: "删除成功"
             schema: {
               json_schema: {ref: ".brainrot.v1.DeleteArticleResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Refresh all articles
+  rpc RefreshAllArticles(RefreshAllArticlesRequest) returns (RefreshAllArticlesResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/article/refresh-all"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "刷新所有文章"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "刷新成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.RefreshAllArticlesResponse"}
             }
           }
         }

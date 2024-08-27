@@ -43,7 +43,7 @@ func (m *customArticleModel) LogicDeleteByAuthorIDTitle(ctx context.Context, aut
 	articleAuthorIDTitleKey := fmt.Sprintf("%s%v:%v", cacheArticleAuthorIdTitlePrefix, data.AuthorId, data.Title)
 	articleIDKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, data.AuthorId)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE `author_id` = ? AND `title` = ?", m.table)
+		query := fmt.Sprintf("UPDATE %s SET `status` = 1 WHERE `author_id` = ? AND `title` = ?", m.table)
 		return conn.ExecCtx(ctx, query, authorID, title)
 	}, articleAuthorIDTitleKey, articleIDKey)
 	if err != nil {

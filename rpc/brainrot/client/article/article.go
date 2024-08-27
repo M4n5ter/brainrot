@@ -23,6 +23,8 @@ type (
 	PingResponse               = brainrot.PingResponse
 	PostArticleRequest         = brainrot.PostArticleRequest
 	PostArticleResponse        = brainrot.PostArticleResponse
+	RefreshAllArticlesRequest  = brainrot.RefreshAllArticlesRequest
+	RefreshAllArticlesResponse = brainrot.RefreshAllArticlesResponse
 	RefreshTokenRequest        = brainrot.RefreshTokenRequest
 	RefreshTokenResponse       = brainrot.RefreshTokenResponse
 	SearchUsersRequest         = brainrot.SearchUsersRequest
@@ -40,6 +42,8 @@ type (
 		PostArticle(ctx context.Context, in *PostArticleRequest, opts ...grpc.CallOption) (*PostArticleResponse, error)
 		// Delete article
 		DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*DeleteArticleResponse, error)
+		// Refresh all articles
+		RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error)
 	}
 
 	defaultArticle struct {
@@ -63,4 +67,10 @@ func (m *defaultArticle) PostArticle(ctx context.Context, in *PostArticleRequest
 func (m *defaultArticle) DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*DeleteArticleResponse, error) {
 	client := brainrot.NewArticleClient(m.cli.Conn())
 	return client.DeleteArticle(ctx, in, opts...)
+}
+
+// Refresh all articles
+func (m *defaultArticle) RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error) {
+	client := brainrot.NewArticleClient(m.cli.Conn())
+	return client.RefreshAllArticles(ctx, in, opts...)
 }

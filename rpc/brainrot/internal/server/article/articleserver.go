@@ -33,3 +33,9 @@ func (s *ArticleServer) DeleteArticle(ctx context.Context, in *brainrot.DeleteAr
 	l := articlelogic.NewDeleteArticleLogic(ctx, s.svcCtx)
 	return l.DeleteArticle(in)
 }
+
+// Refresh all articles
+func (s *ArticleServer) RefreshAllArticles(ctx context.Context, in *brainrot.RefreshAllArticlesRequest) (*brainrot.RefreshAllArticlesResponse, error) {
+	l := articlelogic.NewRefreshAllArticlesLogic(ctx, s.svcCtx)
+	return l.RefreshAllArticles(in)
+}

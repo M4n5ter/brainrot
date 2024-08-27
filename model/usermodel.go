@@ -34,7 +34,7 @@ func NewUserModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) Us
 }
 
 func (m *customUserModel) SearchUsers(ctx context.Context, email, username string) ([]*User, error) {
-	query := fmt.Sprintf("SELECT %s FROM %s WHERE email = ? OR username = ?", userRows, m.table)
+	query := fmt.Sprintf("SELECT %s FROM %s WHERE (`email` = ? OR `username` = ?) AND `status` = 0", userRows, m.table)
 	var resp []*User
 	err := m.QueryRowNoCacheCtx(ctx, &resp, query, email, username)
 	switch err {

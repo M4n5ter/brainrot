@@ -21,9 +21,9 @@ type Config struct {
 type OAUTH2Conf struct {
 	KeyPrefix string
 	// Default 604800 seconds(7 days)
-	KeyExpire     int64 `json:",default=604800"`
+	KeyExpire     int64 `json:",default=604800"` //nolint:staticcheck
 	RefreshSecret string
-	RefreshExpire int64 `json:",default=604800"`
+	RefreshExpire int64 `json:",default=604800"` //nolint:staticcheck
 	Strategy      struct {
 		Enable    bool
 		Whitelist []string

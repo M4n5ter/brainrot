@@ -427,8 +427,9 @@ var User_ServiceDesc = grpc.ServiceDesc{
 }
 
 const (
-	Article_PostArticle_FullMethodName   = "/brainrot.v1.Article/PostArticle"
-	Article_DeleteArticle_FullMethodName = "/brainrot.v1.Article/DeleteArticle"
+	Article_PostArticle_FullMethodName        = "/brainrot.v1.Article/PostArticle"
+	Article_DeleteArticle_FullMethodName      = "/brainrot.v1.Article/DeleteArticle"
+	Article_RefreshAllArticles_FullMethodName = "/brainrot.v1.Article/RefreshAllArticles"
 )
 
 // ArticleClient is the client API for Article service.
@@ -439,6 +440,8 @@ type ArticleClient interface {
 	PostArticle(ctx context.Context, in *PostArticleRequest, opts ...grpc.CallOption) (*PostArticleResponse, error)
 	// Delete article
 	DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*DeleteArticleResponse, error)
+	// Refresh all articles
+	RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error)
 }
 
 type articleClient struct {
@@ -469,6 +472,16 @@ func (c *articleClient) DeleteArticle(ctx context.Context, in *DeleteArticleRequ
 	return out, nil
 }
 
+func (c *articleClient) RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RefreshAllArticlesResponse)
+	err := c.cc.Invoke(ctx, Article_RefreshAllArticles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ArticleServer is the server API for Article service.
 // All implementations must embed UnimplementedArticleServer
 // for forward compatibility.
@@ -477,6 +490,8 @@ type ArticleServer interface {
 	PostArticle(context.Context, *PostArticleRequest) (*PostArticleResponse, error)
 	// Delete article
 	DeleteArticle(context.Context, *DeleteArticleRequest) (*DeleteArticleResponse, error)
+	// Refresh all articles
+	RefreshAllArticles(context.Context, *RefreshAllArticlesRequest) (*RefreshAllArticlesResponse, error)
 	mustEmbedUnimplementedArticleServer()
 }
 
@@ -492,6 +507,9 @@ func (UnimplementedArticleServer) PostArticle(context.Context, *PostArticleReque
 }
 func (UnimplementedArticleServer) DeleteArticle(context.Context, *DeleteArticleRequest) (*DeleteArticleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteArticle not implemented")
+}
+func (UnimplementedArticleServer) RefreshAllArticles(context.Context, *RefreshAllArticlesRequest) (*RefreshAllArticlesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RefreshAllArticles not implemented")
 }
 func (UnimplementedArticleServer) mustEmbedUnimplementedArticleServer() {}
 func (UnimplementedArticleServer) testEmbeddedByValue()                 {}
@@ -550,6 +568,24 @@ func _Article_DeleteArticle_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Article_RefreshAllArticles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RefreshAllArticlesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArticleServer).RefreshAllArticles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Article_RefreshAllArticles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArticleServer).RefreshAllArticles(ctx, req.(*RefreshAllArticlesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Article_ServiceDesc is the grpc.ServiceDesc for Article service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -564,6 +600,10 @@ var Article_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteArticle",
 			Handler:    _Article_DeleteArticle_Handler,
+		},
+		{
+			MethodName: "RefreshAllArticles",
+			Handler:    _Article_RefreshAllArticles_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

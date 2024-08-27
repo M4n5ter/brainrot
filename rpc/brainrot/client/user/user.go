@@ -23,6 +23,8 @@ type (
 	PingResponse               = brainrot.PingResponse
 	PostArticleRequest         = brainrot.PostArticleRequest
 	PostArticleResponse        = brainrot.PostArticleResponse
+	RefreshAllArticlesRequest  = brainrot.RefreshAllArticlesRequest
+	RefreshAllArticlesResponse = brainrot.RefreshAllArticlesResponse
 	RefreshTokenRequest        = brainrot.RefreshTokenRequest
 	RefreshTokenResponse       = brainrot.RefreshTokenResponse
 	SearchUsersRequest         = brainrot.SearchUsersRequest

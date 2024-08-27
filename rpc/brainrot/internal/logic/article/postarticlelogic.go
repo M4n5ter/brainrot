@@ -4,6 +4,7 @@ import (
 	"context"
 	"strconv"
 	"strings"
+	"time"
 
 	"brainrot/gen/pb/brainrot"
 	"brainrot/model"
@@ -48,12 +49,23 @@ func (l *PostArticleLogic) PostArticle(in *brainrot.PostArticleRequest) (*brainr
 		return nil, articlemodule.ErrCopierCopy.Wrap("%v", err)
 	}
 
+	author, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userid))
+	if err != nil {
+		return nil, articlemodule.ErrDBError.Wrap("获取作者信息失败：%v", err)
+	}
+
 	modelarticle.AuthorId = uint64(userid)
+	modelarticle.Author = author.Username
 	modelarticle.Tags = strings.Join(in.Tags, ",")
 	result, err := l.svcCtx.ArticleModel.Insert(l.ctx, modelarticle)
 	if err != nil {
 		return nil, articlemodule.ErrDBError.Wrap("插入文章失败：%v", err)
 	}
+
+	// 发布文章和更新文章的时间可以允许有一些误差，所以在这里直接生成当前时间，而不是再次查询数据库
+	now := time.Now()
+	modelarticle.CreatedAt = now
+	modelarticle.UpdatedAt = now
 
 	articleID, err := result.LastInsertId()
 	if err != nil {
@@ -61,11 +73,6 @@ func (l *PostArticleLogic) PostArticle(in *brainrot.PostArticleRequest) (*brainr
 	}
 
 	// 将文章添加到 meilisearch
-	author, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userid))
-	if err != nil {
-		return nil, articlemodule.ErrDBError.Wrap("获取作者信息失败：%v", err)
-	}
-
 	article := &Article{
 		ID:       articleID,
 		Title:    modelarticle.Title,

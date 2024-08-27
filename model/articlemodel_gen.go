@@ -43,11 +43,12 @@ type (
 	Article struct {
 		Id        uint64    `db:"id"`
 		AuthorId  uint64    `db:"author_id"`
+		Author    string    `db:"author"`
 		Title     string    `db:"title"`
 		Content   string    `db:"content"`
 		Tags      string    `db:"tags"`
 		Poster    string    `db:"poster"`
-		Status    int64     `db:"status"` // 1: active, 0: deleted
+		Status    int64     `db:"status"` // 0: active, 1: deleted
 		CreatedAt time.Time `db:"created_at"`
 		UpdatedAt time.Time `db:"updated_at"`
 	}
@@ -116,8 +117,8 @@ func (m *defaultArticleModel) Insert(ctx context.Context, data *Article) (sql.Re
 	articleAuthorIdTitleKey := fmt.Sprintf("%s%v:%v", cacheArticleAuthorIdTitlePrefix, data.AuthorId, data.Title)
 	articleIdKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, data.Id)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?)", m.table, articleRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.AuthorId, data.Title, data.Content, data.Tags, data.Poster, data.Status)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?)", m.table, articleRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.AuthorId, data.Author, data.Title, data.Content, data.Tags, data.Poster, data.Status)
 	}, articleAuthorIdTitleKey, articleIdKey)
 	return ret, err
 }
@@ -132,7 +133,7 @@ func (m *defaultArticleModel) Update(ctx context.Context, newData *Article) erro
 	articleIdKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, data.Id)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, articleRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, newData.AuthorId, newData.Title, newData.Content, newData.Tags, newData.Poster, newData.Status, newData.Id)
+		return conn.ExecCtx(ctx, query, newData.AuthorId, newData.Author, newData.Title, newData.Content, newData.Tags, newData.Poster, newData.Status, newData.Id)
 	}, articleAuthorIdTitleKey, articleIdKey)
 	return err
 }
@@ -179,7 +180,7 @@ func (m *defaultArticleModel) FindPageListByIdDESC(ctx context.Context, preMinID
 	where := " "
 
 	if preMinID > 0 {
-		where = " WHERE `id` < ? and `status` = 1"
+		where = " WHERE `id` < ? and `status` = 0"
 		args = append(args, preMinID)
 	}
 
@@ -203,7 +204,7 @@ func (m *defaultArticleModel) FindPageListByIdASC(ctx context.Context, preMaxID,
 	where := " "
 
 	if preMaxID > 0 {
-		where = " WHERE `id` > ? and `status` = 1"
+		where = " WHERE `id` > ? and `status` = 0"
 		args = append(args, preMaxID)
 	}
 

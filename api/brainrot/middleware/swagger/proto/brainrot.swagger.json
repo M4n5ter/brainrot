@@ -102,6 +102,40 @@
         ]
       }
     },
+    "/v1/brainrot/article/refresh-all": {
+      "post": {
+        "summary": "刷新所有文章",
+        "operationId": "Article_RefreshAllArticles",
+        "responses": {
+          "200": {
+            "description": "刷新成功",
+            "schema": {
+              "$ref": "#/definitions/v1RefreshAllArticlesResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1RefreshAllArticlesRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Article"
+        ]
+      }
+    },
     "/v1/brainrot/ping": {
       "get": {
         "summary": "Ping is a simple health check",
@@ -457,6 +491,13 @@
           "format": "uint64"
         }
       }
+    },
+    "v1RefreshAllArticlesRequest": {
+      "type": "object",
+      "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this."
+    },
+    "v1RefreshAllArticlesResponse": {
+      "type": "object"
     },
     "v1RefreshTokenRequest": {
       "type": "object",

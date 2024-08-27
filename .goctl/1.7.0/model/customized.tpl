@@ -17,7 +17,7 @@ func (m *default{{.upperStartCamelObject}}Model) LogicDelete(ctx context.Context
     _, err {{if .containsIndexCache}}={{else}}:={{end}} m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE {{.originalPrimaryKey}} = {{if .postgreSql}}$1{{else}}?{{end}}", m.table)
 		return conn.ExecCtx(ctx, query, {{.lowerStartCamelPrimaryKey}})
-	}, {{.keyValues}}){{else}}query := fmt.Sprintf("UPDATE %s SET `status` = 0 WHERE {{.originalPrimaryKey}} = {{if .postgreSql}}$1{{else}}?{{end}}", m.table)
+	}, {{.keyValues}}){{else}}query := fmt.Sprintf("UPDATE %s SET `status` = 1 WHERE {{.originalPrimaryKey}} = {{if .postgreSql}}$1{{else}}?{{end}}", m.table)
 		_,err:=m.conn.ExecCtx(ctx, query, {{.lowerStartCamelPrimaryKey}}){{end}}
 	return err
 }
@@ -28,7 +28,7 @@ func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCame
 	where := " "
 	
 	if preMinID > 0 {
-		where = " WHERE {{.originalPrimaryKey}} < ? and `status` = 1"
+		where = " WHERE {{.originalPrimaryKey}} < ? and `status` = 0"
 		args = append(args, preMinID)
 	}
 
@@ -54,7 +54,7 @@ func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCame
 	where := " "
 	
 	if preMaxID > 0 {
-		where = " WHERE {{.originalPrimaryKey}} > ? and `status` = 1"
+		where = " WHERE {{.originalPrimaryKey}} > ? and `status` = 0"
 		args = append(args, preMaxID)
 	}
 
