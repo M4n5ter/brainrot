@@ -2,7 +2,9 @@ package commentlogic
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
 	"brainrot/gen/pb/brainrot"
 	"brainrot/rpc/brainrot/internal/svc"
@@ -49,6 +51,15 @@ func (l *UpdateCommentUsefulnessLogic) UpdateCommentUsefulness(in *brainrot.Upda
 		return nil, commentmodule.ErrAIError
 	}
 
+	voterIDs := strings.Split(modelcomment.VoterIds, ",")
+	for _, voterID := range voterIDs {
+		if useridstr == strings.TrimSpace(voterID) {
+			return nil, commentmodule.ErrVoteTwice
+		}
+	}
+	voterIDs = append(voterIDs, useridstr)
+	voterIDsStr := strings.Join(voterIDs, ",")
+
 	modeluser, err := l.svcCtx.UserModel.FindOne(l.ctx, uint64(userid))
 	if err != nil {
 		return nil, commentmodule.ErrDBError.Wrap("查找用户 %d 失败", userid)
@@ -59,9 +70,9 @@ func (l *UpdateCommentUsefulnessLogic) UpdateCommentUsefulness(in *brainrot.Upda
 	}
 
 	err = l.svcCtx.CommentModel.Trans(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		commentQuery := "UPDATE `comment` SET `useful_count` = `useful_count` + 1 WHERE `id` = ? AND `status` = 1"
+		commentQuery := fmt.Sprintf("UPDATE `comment` SET `useful_count` = `useful_count` + 1, `voter_ids` = `%s` WHERE `id` = ? AND `status` = 1", voterIDsStr)
 		if !in.IsUseful {
-			commentQuery = "UPDATE `comment` SET `useless_count` = `useless_count` + 1 WHERE `id` = ? AND `status` = 1"
+			commentQuery = fmt.Sprintf("UPDATE `comment` SET `useless_count` = `useless_count` + 1, `voter_ids` = `%s` WHERE `id` = ? AND `status` = 1", voterIDsStr)
 		}
 		_, err := session.ExecCtx(ctx, commentQuery, in.CommentId)
 		if err != nil {

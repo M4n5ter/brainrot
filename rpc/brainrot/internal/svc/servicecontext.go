@@ -27,7 +27,7 @@ type ServiceContext struct {
 	TagModel     model.TagModel
 	CommentModel model.CommentModel
 	Redis        *redis.Redis
-	Meili        *meilisearch.Client
+	Meili        meilisearch.ServiceManager
 	S3           *minio.Client
 }
 
@@ -51,7 +51,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 			r.Type = c.Redis.Type
 			r.Pass = c.Redis.Pass
 		}),
-		Meili: meilisearch.NewClient(c.Meilisearch.ToClientConfig()),
+		Meili: meilisearch.New(c.Meilisearch.Host, meilisearch.WithAPIKey(c.Meilisearch.APIKey)),
 		S3:    s3,
 	}
 }

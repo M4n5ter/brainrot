@@ -45,6 +45,7 @@ type (
 		Commenter    string    `db:"commenter"`
 		UsefulCount  uint64    `db:"useful_count"`
 		UselessCount uint64    `db:"useless_count"`
+		VoterIds     string    `db:"voter_ids"`
 		Content      string    `db:"content"`
 		Status       int64     `db:"status"` // 1: active, 0: deleted
 		CreatedAt    time.Time `db:"created_at"`
@@ -88,8 +89,8 @@ func (m *defaultCommentModel) FindOne(ctx context.Context, id uint64) (*Comment,
 func (m *defaultCommentModel) Insert(ctx context.Context, data *Comment) (sql.Result, error) {
 	commentIdKey := fmt.Sprintf("%s%v", cacheCommentIdPrefix, data.Id)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?)", m.table, commentRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.ArticleId, data.UserId, data.Commenter, data.UsefulCount, data.UselessCount, data.Content)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?)", m.table, commentRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.ArticleId, data.UserId, data.Commenter, data.UsefulCount, data.UselessCount, data.VoterIds, data.Content)
 	}, commentIdKey)
 	return ret, err
 }
@@ -98,7 +99,7 @@ func (m *defaultCommentModel) Update(ctx context.Context, data *Comment) error {
 	commentIdKey := fmt.Sprintf("%s%v", cacheCommentIdPrefix, data.Id)
 	_, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, commentRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, data.ArticleId, data.UserId, data.Commenter, data.UsefulCount, data.UselessCount, data.Content, data.Id)
+		return conn.ExecCtx(ctx, query, data.ArticleId, data.UserId, data.Commenter, data.UsefulCount, data.UselessCount, data.VoterIds, data.Content, data.Id)
 	}, commentIdKey)
 	return err
 }

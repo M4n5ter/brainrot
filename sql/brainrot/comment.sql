@@ -5,6 +5,7 @@ CREATE TABLE comment (
     commenter VARCHAR(50) NOT NULL,
     useful_count INT UNSIGNED NOT NULL DEFAULT 0,
     useless_count INT UNSIGNED NOT NULL DEFAULT 0,
+    voter_ids TEXT NOT NULL,
     content TEXT NOT NULL,
     status TINYINT NOT NULL DEFAULT 1 COMMENT '1: active, 0: deleted',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -14,6 +14,7 @@ var (
 	ErrLackNecessaryField   = merror.DefineError(merror.Client, module.CommentModuleNumber, 2, "缺少必要输入")
 	ErrNoPermission         = merror.DefineError(merror.Client, module.CommentModuleNumber, 3, "无权限")
 	ErrNeedEnoughReputation = merror.DefineError(merror.Client, module.CommentModuleNumber, 4, "声望不足，至少需要 5 声望")
+	ErrVoteTwice            = merror.DefineError(merror.Client, module.CommentModuleNumber, 5, "不能重复投票")
 
 	ErrSystemError = merror.DefineError(merror.System, module.CommentModuleNumber, 1, "服务器正忙", "操作系统或服务外软件错误")
 )

@@ -1,9 +1,6 @@
 package config
 
 import (
-	"time"
-
-	"github.com/meilisearch/meilisearch-go"
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/zrpc"
 )
@@ -38,17 +35,6 @@ type MeiliConf struct {
 
 	// APIKey is optional
 	APIKey string `json:",optional"` //nolint:staticcheck
-
-	// Timeout is optional
-	Timeout int64 `json:",optional"` //nolint:staticcheck
-}
-
-func (m MeiliConf) ToClientConfig() meilisearch.ClientConfig {
-	return meilisearch.ClientConfig{
-		Host:    m.Host,
-		APIKey:  m.APIKey,
-		Timeout: time.Second * time.Duration(m.Timeout),
-	}
 }
 
 type S3Conf struct {
