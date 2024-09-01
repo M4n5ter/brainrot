@@ -2,10 +2,12 @@ package userlogic
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 
 	"brainrot/gen/pb/brainrot"
 	"brainrot/model"
+	"brainrot/pkg/util"
 	"brainrot/pkg/util/validator"
 	"brainrot/rpc/brainrot/internal/svc"
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
@@ -39,26 +41,26 @@ func (l *SignInLogic) SignIn(in *brainrot.SignInRequest) (*brainrot.SignInRespon
 		return nil, usermodule.ErrInvalidInput.Wrap("邮箱格式不合法")
 	}
 
-	usermodel, err := l.svcCtx.UserModel.FindOneByEmail(l.ctx, in.Email)
-	if err != nil || usermodel == nil {
+	modeluser, err := l.svcCtx.UserModel.FindOneByEmail(l.ctx, in.Email)
+	if err != nil || modeluser == nil {
 		if errors.Is(err, model.ErrNotFound) {
 			return nil, usermodule.ErrDBUserNotFound
 		}
 		return nil, usermodule.ErrDBError.Wrap("根据邮箱查询用户失败，邮箱为：%s，错误为：%v", in.Email, err)
 	}
 
-	if usermodel.Password != in.Password {
+	if modeluser.Password != hex.EncodeToString(util.HashWithSalt(util.TobrainrotBytes(in.Password), nil)) {
 		return nil, usermodule.ErrInvalidInput.Wrap("密码错误，邮箱为：%s", in.Email)
 	}
 
 	resp := &brainrot.SignInResponse{}
-	err = copier.Copy(resp, usermodel)
+	err = copier.Copy(resp, modeluser)
 	if err != nil {
 		return nil, usermodule.ErrCopierCopy.Wrap("拷贝用户信息失败")
 	}
 
 	if l.svcCtx.Config.MAC.Strategy.Enable {
-		macresp, err := l.svcCtx.GenMACResponse(int64(usermodel.Id))
+		macresp, err := l.svcCtx.GenMACResponse(int64(modeluser.Id))
 		if err != nil {
 			return nil, err
 		}
@@ -76,7 +78,7 @@ func (l *SignInLogic) SignIn(in *brainrot.SignInRequest) (*brainrot.SignInRespon
 		resp.RefreshTokenExpire = l.svcCtx.Config.MAC.RefreshExpire
 
 	} else if l.svcCtx.Config.APIKey.Strategy.Enable {
-		apiresp, err := l.svcCtx.GenAPIKeyResponse(int64(usermodel.Id))
+		apiresp, err := l.svcCtx.GenAPIKeyResponse(int64(modeluser.Id))
 		if err != nil {
 			return nil, err
 		}

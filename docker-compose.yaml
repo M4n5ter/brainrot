@@ -26,11 +26,45 @@ services:
       - ./temp/data/meilisearch_data:/meili_data
 
   minio:
-    image: quay.io/minio/minio:latest
+    image: minio/minio:latest
     ports:
       - 9000:9000
       - 9001:9001
     environment:
+      MINIO_SITE_REGION: cn-east-1 # https://github.com/minio/minio/tree/master/docs/config#site
       MINIO_ROOT_USER: brainrot
       MINIO_ROOT_PASSWORD: brainrot
     command: server /data --console-address ":9001"
+    
+  createbuckets:
+    image: minio/mc:latest
+    restart: "no"
+    depends_on:
+      - minio
+    entrypoint: |
+      /bin/sh -c "
+      /usr/bin/mc alias set myminio http://minio:9000 brainrot brainrot;
+      /usr/bin/mc mb --region=cn-east-1 myminio/public-brainrot;
+      /usr/bin/mc mb --region=cn-east-1 myminio/private-brainrot;
+      cat <<EOF > /tmp/policy.json
+      {
+        \"Version\": \"2012-10-17\",
+        \"Statement\": [
+          {
+            \"Effect\": \"Allow\",
+            \"Principal\": \"*\",
+            \"Action\": [
+              \"s3:GetObject\"
+            ],
+            \"Resource\": [
+              \"arn:aws:s3:::public-*/*\"
+            ]
+          }
+        ]
+      }
+      EOF
+      cat /tmp/policy.json;
+      /usr/bin/mc admin policy create myminio publicro /tmp/policy.json;
+      /usr/bin/mc anonymous set download myminio/public-brainrot;
+      exit 0;
+      "

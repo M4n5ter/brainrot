@@ -23,6 +23,12 @@
     },
     {
       "name": "Article"
+    },
+    {
+      "name": "Comment"
+    },
+    {
+      "name": "S3"
     }
   ],
   "schemes": [
@@ -36,6 +42,40 @@
     "application/json"
   ],
   "paths": {
+    "/v1/brainrot/article/add-tags": {
+      "post": {
+        "summary": "添加标签",
+        "operationId": "Article_AddTags",
+        "responses": {
+          "200": {
+            "description": "添加成功",
+            "schema": {
+              "$ref": "#/definitions/v1AddTagsResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1AddTagsRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Article"
+        ]
+      }
+    },
     "/v1/brainrot/article/delete": {
       "post": {
         "summary": "删除一篇文章",
@@ -61,6 +101,40 @@
             "required": true,
             "schema": {
               "$ref": "#/definitions/v1DeleteArticleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Article"
+        ]
+      }
+    },
+    "/v1/brainrot/article/delete-tag": {
+      "post": {
+        "summary": "删除标签",
+        "operationId": "Article_DeleteTag",
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteTagResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteTagRequest"
             }
           }
         ],
@@ -136,6 +210,171 @@
         ]
       }
     },
+    "/v1/brainrot/comment/delete": {
+      "post": {
+        "summary": "删除一条评论",
+        "operationId": "Comment_DeleteComment",
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "schema": {
+              "$ref": "#/definitions/v1DeleteCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1DeleteCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Comment"
+        ]
+      }
+    },
+    "/v1/brainrot/comment/edit": {
+      "post": {
+        "summary": "编辑一条评论",
+        "operationId": "Comment_EditComment",
+        "responses": {
+          "200": {
+            "description": "编辑成功",
+            "schema": {
+              "$ref": "#/definitions/v1EditCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1EditCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Comment"
+        ]
+      }
+    },
+    "/v1/brainrot/comment/get-by-article": {
+      "post": {
+        "summary": "获取一篇文章的所有评论",
+        "operationId": "Comment_GetCommentsByArticle",
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "schema": {
+              "$ref": "#/definitions/v1GetCommentsByArticleResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetCommentsByArticleRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Comment"
+        ]
+      }
+    },
+    "/v1/brainrot/comment/post": {
+      "post": {
+        "summary": "发布一条评论",
+        "operationId": "Comment_PostComment",
+        "responses": {
+          "200": {
+            "description": "发布成功",
+            "schema": {
+              "$ref": "#/definitions/v1PostCommentResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1PostCommentRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Comment"
+        ]
+      }
+    },
+    "/v1/brainrot/comment/update-usefulness": {
+      "post": {
+        "summary": "更新评论有用性",
+        "operationId": "Comment_UpdateCommentUsefulness",
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "schema": {
+              "$ref": "#/definitions/v1UpdateCommentUsefulnessResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1UpdateCommentUsefulnessRequest"
+            }
+          }
+        ],
+        "tags": [
+          "Comment"
+        ]
+      }
+    },
     "/v1/brainrot/ping": {
       "get": {
         "summary": "Ping is a simple health check",
@@ -156,6 +395,39 @@
         },
         "tags": [
           "Ping"
+        ]
+      }
+    },
+    "/v1/brainrot/s3/get-presigned-url": {
+      "post": {
+        "summary": "获取一个 S3 对象的预签名 URL",
+        "operationId": "S3_GetPresignedURL",
+        "responses": {
+          "200": {
+            "description": "获取成功",
+            "schema": {
+              "$ref": "#/definitions/v1GetPresignedURLResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/v1GetPresignedURLRequest"
+            }
+          }
+        ],
+        "tags": [
+          "S3"
         ]
       }
     },
@@ -350,6 +622,33 @@
     }
   },
   "definitions": {
+    "GetCommentsByArticleResponseComment": {
+      "type": "object",
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "commenter": {
+          "type": "string"
+        },
+        "usefulCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "uselessCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "int64"
+        }
+      }
+    },
     "SearchUsersResponseUser": {
       "type": "object",
       "properties": {
@@ -398,6 +697,21 @@
         }
       }
     },
+    "v1AddTagsRequest": {
+      "type": "object",
+      "properties": {
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this."
+    },
+    "v1AddTagsResponse": {
+      "type": "object"
+    },
     "v1DeleteArticleRequest": {
       "type": "object",
       "properties": {
@@ -412,6 +726,67 @@
     },
     "v1DeleteArticleResponse": {
       "type": "object"
+    },
+    "v1DeleteCommentRequest": {
+      "type": "object",
+      "properties": {
+        "commentId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1DeleteCommentResponse": {
+      "type": "object"
+    },
+    "v1DeleteTagRequest": {
+      "type": "object",
+      "properties": {
+        "tag": {
+          "type": "string"
+        }
+      },
+      "description": "TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this."
+    },
+    "v1DeleteTagResponse": {
+      "type": "object"
+    },
+    "v1EditCommentRequest": {
+      "type": "object",
+      "properties": {
+        "commentId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "v1EditCommentResponse": {
+      "type": "object"
+    },
+    "v1GetCommentsByArticleRequest": {
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      },
+      "title": "Comment start"
+    },
+    "v1GetCommentsByArticleResponse": {
+      "type": "object",
+      "properties": {
+        "comments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/definitions/GetCommentsByArticleResponseComment"
+          }
+        }
+      }
     },
     "v1GetCurrentUserInfoResponse": {
       "type": "object",
@@ -445,6 +820,38 @@
         }
       },
       "description": "获取当前用户信息响应体"
+    },
+    "v1GetPresignedURLRequest": {
+      "type": "object",
+      "properties": {
+        "objectKey": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string"
+        },
+        "operation": {
+          "type": "string"
+        },
+        "isPublic": {
+          "type": "boolean"
+        }
+      },
+      "title": "S3 start"
+    },
+    "v1GetPresignedURLResponse": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string"
+        },
+        "formData": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
     },
     "v1MacFields": {
       "type": "object",
@@ -487,6 +894,27 @@
       "type": "object",
       "properties": {
         "articleId": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
+    },
+    "v1PostCommentRequest": {
+      "type": "object",
+      "properties": {
+        "articleId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "content": {
+          "type": "string"
+        }
+      }
+    },
+    "v1PostCommentResponse": {
+      "type": "object",
+      "properties": {
+        "commentId": {
           "type": "string",
           "format": "uint64"
         }
@@ -675,6 +1103,32 @@
         "message": "ok"
       },
       "description": "用户注册响应体"
+    },
+    "v1UpdateCommentUsefulnessRequest": {
+      "type": "object",
+      "properties": {
+        "commentId": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "isUseful": {
+          "type": "boolean",
+          "title": "true 表示增加 useful 数量，false 表示增加 useless 数量"
+        }
+      }
+    },
+    "v1UpdateCommentUsefulnessResponse": {
+      "type": "object",
+      "properties": {
+        "usefulCount": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "uselessCount": {
+          "type": "string",
+          "format": "uint64"
+        }
+      }
     },
     "v1UpdateUserRequest": {
       "type": "object",

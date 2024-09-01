@@ -11,6 +11,14 @@ MysqlDataSource: root:123456@tcp(127.0.0.1:3306)/brainrot?charset=utf8mb4&parseT
 Meilisearch:
   Host: http://localhost:7700
 
+S3:
+  Endpoint: localhost:9000
+  AccessKeyID: ifljMWGk9WohfSbqJGI3
+  SecretAccessKey: Tktfz18O9YVlQenWZm4KbSslwu67iJ4pQ4dVb173
+  Region: cn-east-1
+  PublicBucket: public-brainrot
+  PrivateBucket: private-brainrot
+
 Redis:
   Host: 127.0.0.1:6379
   Type: node

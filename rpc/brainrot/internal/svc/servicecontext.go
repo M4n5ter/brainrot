@@ -13,6 +13,9 @@ import (
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
 
 	"github.com/meilisearch/meilisearch-go"
+	"github.com/minio/minio-go/v7"
+	"github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/zeromicro/go-zero/core/logx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
@@ -21,21 +24,35 @@ type ServiceContext struct {
 	Config       config.Config
 	UserModel    model.UserModel
 	ArticleModel model.ArticleModel
+	TagModel     model.TagModel
+	CommentModel model.CommentModel
 	Redis        *redis.Redis
 	Meili        *meilisearch.Client
+	S3           *minio.Client
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
 	sqlConn := sqlx.NewMysql(c.MysqlDataSource)
+
+	s3, err := minio.New(c.S3.Endpoint, &minio.Options{
+		Creds:  credentials.NewStaticV4(c.S3.AccessKeyID, c.S3.SecretAccessKey, ""),
+		Secure: c.S3.UseSSL,
+		Region: c.S3.Region,
+	})
+	logx.Must(err)
+
 	return &ServiceContext{
 		Config:       c,
 		UserModel:    model.NewUserModel(sqlConn, c.Cache),
 		ArticleModel: model.NewArticleModel(sqlConn, c.Cache),
+		TagModel:     model.NewTagModel(sqlConn, c.Cache),
+		CommentModel: model.NewCommentModel(sqlConn, c.Cache),
 		Redis: redis.New(c.Redis.Host, func(r *redis.Redis) {
 			r.Type = c.Redis.Type
 			r.Pass = c.Redis.Pass
 		}),
 		Meili: meilisearch.NewClient(c.Meilisearch.ToClientConfig()),
+		S3:    s3,
 	}
 }
 

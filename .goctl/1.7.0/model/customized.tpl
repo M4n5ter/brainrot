@@ -22,7 +22,6 @@ func (m *default{{.upperStartCamelObject}}Model) LogicDelete(ctx context.Context
 	return err
 }
 
-
 func (m *default{{.upperStartCamelObject}}Model) FindPageListBy{{.upperStartCamelPrimaryKey}}DESC(ctx context.Context, preMinID, pageSize {{.primaryKeyDataType}}) ([]*{{.upperStartCamelObject}}, error) {
 	args := []any{}
 	where := " "

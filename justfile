@@ -61,7 +61,7 @@ input 'Y/N' to continue or exit.
 """)]
 [group('generate')]
 genmodel sql_name target="brainrot" *args="":
-    @goctl model mysql ddl --cache --home {{ join(root, ".goctl") }} {{ args }} --strict --dir model --src {{ join(root, "sql", target, sql_name) }}.sql
+    @goctl model mysql ddl --cache --ignore-columns create_at,created_at,create_time,update_at,updated_at,update_time,status --home {{ join(root, ".goctl") }} {{ args }} --strict --dir model --src {{ join(root, "sql", target, sql_name) }}.sql
 
 # run e.g., just run rpc brainrot - 运行
 [group('dev')]

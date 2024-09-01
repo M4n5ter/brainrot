@@ -429,6 +429,8 @@ var User_ServiceDesc = grpc.ServiceDesc{
 const (
 	Article_PostArticle_FullMethodName        = "/brainrot.v1.Article/PostArticle"
 	Article_DeleteArticle_FullMethodName      = "/brainrot.v1.Article/DeleteArticle"
+	Article_AddTags_FullMethodName            = "/brainrot.v1.Article/AddTags"
+	Article_DeleteTag_FullMethodName          = "/brainrot.v1.Article/DeleteTag"
 	Article_RefreshAllArticles_FullMethodName = "/brainrot.v1.Article/RefreshAllArticles"
 )
 
@@ -440,6 +442,10 @@ type ArticleClient interface {
 	PostArticle(ctx context.Context, in *PostArticleRequest, opts ...grpc.CallOption) (*PostArticleResponse, error)
 	// Delete article
 	DeleteArticle(ctx context.Context, in *DeleteArticleRequest, opts ...grpc.CallOption) (*DeleteArticleResponse, error)
+	// Add tags
+	AddTags(ctx context.Context, in *AddTagsRequest, opts ...grpc.CallOption) (*AddTagsResponse, error)
+	// Delete tags
+	DeleteTag(ctx context.Context, in *DeleteTagRequest, opts ...grpc.CallOption) (*DeleteTagResponse, error)
 	// Refresh all articles
 	RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error)
 }
@@ -472,6 +478,26 @@ func (c *articleClient) DeleteArticle(ctx context.Context, in *DeleteArticleRequ
 	return out, nil
 }
 
+func (c *articleClient) AddTags(ctx context.Context, in *AddTagsRequest, opts ...grpc.CallOption) (*AddTagsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddTagsResponse)
+	err := c.cc.Invoke(ctx, Article_AddTags_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *articleClient) DeleteTag(ctx context.Context, in *DeleteTagRequest, opts ...grpc.CallOption) (*DeleteTagResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteTagResponse)
+	err := c.cc.Invoke(ctx, Article_DeleteTag_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *articleClient) RefreshAllArticles(ctx context.Context, in *RefreshAllArticlesRequest, opts ...grpc.CallOption) (*RefreshAllArticlesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RefreshAllArticlesResponse)
@@ -490,6 +516,10 @@ type ArticleServer interface {
 	PostArticle(context.Context, *PostArticleRequest) (*PostArticleResponse, error)
 	// Delete article
 	DeleteArticle(context.Context, *DeleteArticleRequest) (*DeleteArticleResponse, error)
+	// Add tags
+	AddTags(context.Context, *AddTagsRequest) (*AddTagsResponse, error)
+	// Delete tags
+	DeleteTag(context.Context, *DeleteTagRequest) (*DeleteTagResponse, error)
 	// Refresh all articles
 	RefreshAllArticles(context.Context, *RefreshAllArticlesRequest) (*RefreshAllArticlesResponse, error)
 	mustEmbedUnimplementedArticleServer()
@@ -507,6 +537,12 @@ func (UnimplementedArticleServer) PostArticle(context.Context, *PostArticleReque
 }
 func (UnimplementedArticleServer) DeleteArticle(context.Context, *DeleteArticleRequest) (*DeleteArticleResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteArticle not implemented")
+}
+func (UnimplementedArticleServer) AddTags(context.Context, *AddTagsRequest) (*AddTagsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddTags not implemented")
+}
+func (UnimplementedArticleServer) DeleteTag(context.Context, *DeleteTagRequest) (*DeleteTagResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteTag not implemented")
 }
 func (UnimplementedArticleServer) RefreshAllArticles(context.Context, *RefreshAllArticlesRequest) (*RefreshAllArticlesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RefreshAllArticles not implemented")
@@ -568,6 +604,42 @@ func _Article_DeleteArticle_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Article_AddTags_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddTagsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArticleServer).AddTags(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Article_AddTags_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArticleServer).AddTags(ctx, req.(*AddTagsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Article_DeleteTag_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTagRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ArticleServer).DeleteTag(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Article_DeleteTag_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ArticleServer).DeleteTag(ctx, req.(*DeleteTagRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Article_RefreshAllArticles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RefreshAllArticlesRequest)
 	if err := dec(in); err != nil {
@@ -602,8 +674,384 @@ var Article_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Article_DeleteArticle_Handler,
 		},
 		{
+			MethodName: "AddTags",
+			Handler:    _Article_AddTags_Handler,
+		},
+		{
+			MethodName: "DeleteTag",
+			Handler:    _Article_DeleteTag_Handler,
+		},
+		{
 			MethodName: "RefreshAllArticles",
 			Handler:    _Article_RefreshAllArticles_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "brainrot.proto",
+}
+
+const (
+	Comment_GetCommentsByArticle_FullMethodName    = "/brainrot.v1.Comment/GetCommentsByArticle"
+	Comment_PostComment_FullMethodName             = "/brainrot.v1.Comment/PostComment"
+	Comment_DeleteComment_FullMethodName           = "/brainrot.v1.Comment/DeleteComment"
+	Comment_EditComment_FullMethodName             = "/brainrot.v1.Comment/EditComment"
+	Comment_UpdateCommentUsefulness_FullMethodName = "/brainrot.v1.Comment/UpdateCommentUsefulness"
+)
+
+// CommentClient is the client API for Comment service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type CommentClient interface {
+	// Get comments by article
+	GetCommentsByArticle(ctx context.Context, in *GetCommentsByArticleRequest, opts ...grpc.CallOption) (*GetCommentsByArticleResponse, error)
+	// Post comment
+	PostComment(ctx context.Context, in *PostCommentRequest, opts ...grpc.CallOption) (*PostCommentResponse, error)
+	// Delete comment
+	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*DeleteCommentResponse, error)
+	// Edit comment
+	EditComment(ctx context.Context, in *EditCommentRequest, opts ...grpc.CallOption) (*EditCommentResponse, error)
+	// Update comment usefulness
+	UpdateCommentUsefulness(ctx context.Context, in *UpdateCommentUsefulnessRequest, opts ...grpc.CallOption) (*UpdateCommentUsefulnessResponse, error)
+}
+
+type commentClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewCommentClient(cc grpc.ClientConnInterface) CommentClient {
+	return &commentClient{cc}
+}
+
+func (c *commentClient) GetCommentsByArticle(ctx context.Context, in *GetCommentsByArticleRequest, opts ...grpc.CallOption) (*GetCommentsByArticleResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCommentsByArticleResponse)
+	err := c.cc.Invoke(ctx, Comment_GetCommentsByArticle_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commentClient) PostComment(ctx context.Context, in *PostCommentRequest, opts ...grpc.CallOption) (*PostCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PostCommentResponse)
+	err := c.cc.Invoke(ctx, Comment_PostComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commentClient) DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*DeleteCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteCommentResponse)
+	err := c.cc.Invoke(ctx, Comment_DeleteComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commentClient) EditComment(ctx context.Context, in *EditCommentRequest, opts ...grpc.CallOption) (*EditCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditCommentResponse)
+	err := c.cc.Invoke(ctx, Comment_EditComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *commentClient) UpdateCommentUsefulness(ctx context.Context, in *UpdateCommentUsefulnessRequest, opts ...grpc.CallOption) (*UpdateCommentUsefulnessResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateCommentUsefulnessResponse)
+	err := c.cc.Invoke(ctx, Comment_UpdateCommentUsefulness_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// CommentServer is the server API for Comment service.
+// All implementations must embed UnimplementedCommentServer
+// for forward compatibility.
+type CommentServer interface {
+	// Get comments by article
+	GetCommentsByArticle(context.Context, *GetCommentsByArticleRequest) (*GetCommentsByArticleResponse, error)
+	// Post comment
+	PostComment(context.Context, *PostCommentRequest) (*PostCommentResponse, error)
+	// Delete comment
+	DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error)
+	// Edit comment
+	EditComment(context.Context, *EditCommentRequest) (*EditCommentResponse, error)
+	// Update comment usefulness
+	UpdateCommentUsefulness(context.Context, *UpdateCommentUsefulnessRequest) (*UpdateCommentUsefulnessResponse, error)
+	mustEmbedUnimplementedCommentServer()
+}
+
+// UnimplementedCommentServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedCommentServer struct{}
+
+func (UnimplementedCommentServer) GetCommentsByArticle(context.Context, *GetCommentsByArticleRequest) (*GetCommentsByArticleResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetCommentsByArticle not implemented")
+}
+func (UnimplementedCommentServer) PostComment(context.Context, *PostCommentRequest) (*PostCommentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PostComment not implemented")
+}
+func (UnimplementedCommentServer) DeleteComment(context.Context, *DeleteCommentRequest) (*DeleteCommentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteComment not implemented")
+}
+func (UnimplementedCommentServer) EditComment(context.Context, *EditCommentRequest) (*EditCommentResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EditComment not implemented")
+}
+func (UnimplementedCommentServer) UpdateCommentUsefulness(context.Context, *UpdateCommentUsefulnessRequest) (*UpdateCommentUsefulnessResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateCommentUsefulness not implemented")
+}
+func (UnimplementedCommentServer) mustEmbedUnimplementedCommentServer() {}
+func (UnimplementedCommentServer) testEmbeddedByValue()                 {}
+
+// UnsafeCommentServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CommentServer will
+// result in compilation errors.
+type UnsafeCommentServer interface {
+	mustEmbedUnimplementedCommentServer()
+}
+
+func RegisterCommentServer(s grpc.ServiceRegistrar, srv CommentServer) {
+	// If the following call pancis, it indicates UnimplementedCommentServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&Comment_ServiceDesc, srv)
+}
+
+func _Comment_GetCommentsByArticle_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCommentsByArticleRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommentServer).GetCommentsByArticle(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Comment_GetCommentsByArticle_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommentServer).GetCommentsByArticle(ctx, req.(*GetCommentsByArticleRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Comment_PostComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PostCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommentServer).PostComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Comment_PostComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommentServer).PostComment(ctx, req.(*PostCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Comment_DeleteComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommentServer).DeleteComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Comment_DeleteComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommentServer).DeleteComment(ctx, req.(*DeleteCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Comment_EditComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommentServer).EditComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Comment_EditComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommentServer).EditComment(ctx, req.(*EditCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Comment_UpdateCommentUsefulness_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateCommentUsefulnessRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CommentServer).UpdateCommentUsefulness(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Comment_UpdateCommentUsefulness_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CommentServer).UpdateCommentUsefulness(ctx, req.(*UpdateCommentUsefulnessRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// Comment_ServiceDesc is the grpc.ServiceDesc for Comment service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var Comment_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "brainrot.v1.Comment",
+	HandlerType: (*CommentServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetCommentsByArticle",
+			Handler:    _Comment_GetCommentsByArticle_Handler,
+		},
+		{
+			MethodName: "PostComment",
+			Handler:    _Comment_PostComment_Handler,
+		},
+		{
+			MethodName: "DeleteComment",
+			Handler:    _Comment_DeleteComment_Handler,
+		},
+		{
+			MethodName: "EditComment",
+			Handler:    _Comment_EditComment_Handler,
+		},
+		{
+			MethodName: "UpdateCommentUsefulness",
+			Handler:    _Comment_UpdateCommentUsefulness_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "brainrot.proto",
+}
+
+const (
+	S3_GetPresignedURL_FullMethodName = "/brainrot.v1.S3/GetPresignedURL"
+)
+
+// S3Client is the client API for S3 service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type S3Client interface {
+	// Get presigned url
+	GetPresignedURL(ctx context.Context, in *GetPresignedURLRequest, opts ...grpc.CallOption) (*GetPresignedURLResponse, error)
+}
+
+type s3Client struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewS3Client(cc grpc.ClientConnInterface) S3Client {
+	return &s3Client{cc}
+}
+
+func (c *s3Client) GetPresignedURL(ctx context.Context, in *GetPresignedURLRequest, opts ...grpc.CallOption) (*GetPresignedURLResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPresignedURLResponse)
+	err := c.cc.Invoke(ctx, S3_GetPresignedURL_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// S3Server is the server API for S3 service.
+// All implementations must embed UnimplementedS3Server
+// for forward compatibility.
+type S3Server interface {
+	// Get presigned url
+	GetPresignedURL(context.Context, *GetPresignedURLRequest) (*GetPresignedURLResponse, error)
+	mustEmbedUnimplementedS3Server()
+}
+
+// UnimplementedS3Server must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedS3Server struct{}
+
+func (UnimplementedS3Server) GetPresignedURL(context.Context, *GetPresignedURLRequest) (*GetPresignedURLResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPresignedURL not implemented")
+}
+func (UnimplementedS3Server) mustEmbedUnimplementedS3Server() {}
+func (UnimplementedS3Server) testEmbeddedByValue()            {}
+
+// UnsafeS3Server may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to S3Server will
+// result in compilation errors.
+type UnsafeS3Server interface {
+	mustEmbedUnimplementedS3Server()
+}
+
+func RegisterS3Server(s grpc.ServiceRegistrar, srv S3Server) {
+	// If the following call pancis, it indicates UnimplementedS3Server was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&S3_ServiceDesc, srv)
+}
+
+func _S3_GetPresignedURL_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPresignedURLRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(S3Server).GetPresignedURL(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: S3_GetPresignedURL_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(S3Server).GetPresignedURL(ctx, req.(*GetPresignedURLRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// S3_ServiceDesc is the grpc.ServiceDesc for S3 service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var S3_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "brainrot.v1.S3",
+	HandlerType: (*S3Server)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetPresignedURL",
+			Handler:    _S3_GetPresignedURL_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

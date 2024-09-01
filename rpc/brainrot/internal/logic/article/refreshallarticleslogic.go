@@ -34,7 +34,7 @@ func (l *RefreshAllArticlesLogic) RefreshAllArticles(in *brainrot.RefreshAllArti
 	// TODO: Need MQ to refresh all articles asynchronously.
 	var modelarticles []*model.Article
 	err := l.svcCtx.ArticleModel.Trans(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		query := fmt.Sprintf("SELECT %s FROM %s WHERE status = 0", strings.Join(builder.RawFieldNames(&model.Article{}), ","), "article")
+		query := fmt.Sprintf("SELECT %s FROM %s WHERE status = 1", strings.Join(builder.RawFieldNames(&model.Article{}), ","), "article")
 		return session.QueryRowsCtx(ctx, &modelarticles, query)
 	})
 	if err != nil || len(modelarticles) == 0 {

@@ -203,11 +203,77 @@ message DeleteArticleRequest {
   }
 }
 message DeleteArticleResponse {}
+message AddTagsRequest {
+  // TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.
+
+  repeated string tags = 1;
+}
+message AddTagsResponse {}
+message DeleteTagRequest {
+  // TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.
+
+  string tag = 1;
+}
+message DeleteTagResponse {}
 message RefreshAllArticlesRequest {
   // TODO: This operation should be protected by a security mechanism. e.g, only privilege user can do this.
 }
 message RefreshAllArticlesResponse {}
 // Article end
+
+// Comment start
+message GetCommentsByArticleRequest {
+  uint64 article_id = 1;
+}
+message GetCommentsByArticleResponse {
+  message Comment {
+    string content = 1;
+    string commenter = 2;
+    uint64 useful_count = 3;
+    uint64 useless_count = 4;
+    int64 created_at = 5;
+    int64 updated_at = 6;
+  }
+  repeated Comment comments = 1;
+}
+message PostCommentRequest {
+  uint64 article_id = 1;
+  string content = 2;
+}
+message PostCommentResponse {
+  uint64 comment_id = 1;
+}
+message DeleteCommentRequest {
+  uint64 comment_id = 1;
+}
+message DeleteCommentResponse {}
+message EditCommentRequest {
+  uint64 comment_id = 1;
+  string content = 2;
+}
+message EditCommentResponse {}
+message UpdateCommentUsefulnessRequest {
+  uint64 comment_id = 1;
+  bool is_useful = 2; // true 表示增加 useful 数量，false 表示增加 useless 数量
+}
+message UpdateCommentUsefulnessResponse {
+  uint64 useful_count = 1;
+  uint64 useless_count = 2;
+}
+// Comment end
+
+// S3 start
+message GetPresignedURLRequest {
+  string object_key = 1;
+  string content_type = 2;
+  string operation = 3;
+  bool is_public = 4;
+}
+message GetPresignedURLResponse {
+  string url = 1;
+  map<string, string> form_data = 2;
+}
+// S3 end
 
 // Ping start
 
@@ -404,6 +470,50 @@ service Article {
     };
   }
 
+  // Add tags
+  rpc AddTags(AddTagsRequest) returns (AddTagsResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/article/add-tags"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "添加标签"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "添加成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.AddTagsResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Delete tags
+  rpc DeleteTag(DeleteTagRequest) returns (DeleteTagResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/article/delete-tag"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除标签"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "删除成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.DeleteTagResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
   // Refresh all articles
   rpc RefreshAllArticles(RefreshAllArticlesRequest) returns (RefreshAllArticlesResponse) {
     option (google.api.http) = {
@@ -419,6 +529,142 @@ service Article {
             description: "刷新成功"
             schema: {
               json_schema: {ref: ".brainrot.v1.RefreshAllArticlesResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+}
+
+service Comment {
+  // Get comments by article
+  rpc GetCommentsByArticle(GetCommentsByArticleRequest) returns (GetCommentsByArticleResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/comment/get-by-article"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取一篇文章的所有评论"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "获取成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.GetCommentsByArticleResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Post comment
+  rpc PostComment(PostCommentRequest) returns (PostCommentResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/comment/post"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "发布一条评论"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "发布成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.PostCommentResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Delete comment
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/comment/delete"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "删除一条评论"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "删除成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.DeleteCommentResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Edit comment
+  rpc EditComment(EditCommentRequest) returns (EditCommentResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/comment/edit"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "编辑一条评论"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "编辑成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.EditCommentResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+
+  // Update comment usefulness
+  rpc UpdateCommentUsefulness(UpdateCommentUsefulnessRequest) returns (UpdateCommentUsefulnessResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/comment/update-usefulness"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "更新评论有用性"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "更新成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.UpdateCommentUsefulnessResponse"}
+            }
+          }
+        }
+      ]
+    };
+  }
+}
+
+service S3 {
+  // Get presigned url
+  rpc GetPresignedURL(GetPresignedURLRequest) returns (GetPresignedURLResponse) {
+    option (google.api.http) = {
+      post: "/v1/brainrot/s3/get-presigned-url"
+      body: "*"
+    };
+    option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_operation) = {
+      summary: "获取一个 S3 对象的预签名 URL"
+      responses: [
+        {
+          key: "200"
+          value: {
+            description: "获取成功"
+            schema: {
+              json_schema: {ref: ".brainrot.v1.GetPresignedURLResponse"}
             }
           }
         }

@@ -13,6 +13,7 @@ type Config struct {
 
 	MysqlDataSource string
 	Meilisearch     MeiliConf
+	S3              S3Conf
 	MAC             OAUTH2Conf `json:",optional"` //nolint:staticcheck
 	APIKey          OAUTH2Conf `json:",optional"` //nolint:staticcheck
 	Cache           cache.CacheConf
@@ -48,4 +49,14 @@ func (m MeiliConf) ToClientConfig() meilisearch.ClientConfig {
 		APIKey:  m.APIKey,
 		Timeout: time.Second * time.Duration(m.Timeout),
 	}
+}
+
+type S3Conf struct {
+	Endpoint        string
+	AccessKeyID     string
+	SecretAccessKey string
+	Region          string
+	PublicBucket    string
+	PrivateBucket   string
+	UseSSL          bool `json:",default=false"` //nolint:staticcheck
 }

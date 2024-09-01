@@ -2,10 +2,12 @@ package userlogic
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 
 	"brainrot/gen/pb/brainrot"
 	"brainrot/model"
+	"brainrot/pkg/util"
 	"brainrot/pkg/util/validator"
 	"brainrot/rpc/brainrot/internal/svc"
 	usermodule "brainrot/rpc/brainrot/internal/svc/module/user"
@@ -52,15 +54,15 @@ func (l *SignUpLogic) SignUp(in *brainrot.SignUpRequest) (*brainrot.SignUpRespon
 		}
 	}
 
-	usermodel := &model.User{}
-	err := copier.Copy(usermodel, in)
+	modeluser := &model.User{}
+	err := copier.Copy(modeluser, in)
 	if err != nil {
 		return nil, usermodule.ErrCopierCopy.Wrap("%v", err)
 	}
 
-	usermodel.ProfileInfo = "{}"
-
-	ret, err := l.svcCtx.UserModel.Insert(l.ctx, usermodel)
+	modeluser.ProfileInfo = "{}"
+	modeluser.Password = hex.EncodeToString(util.HashWithSalt(util.TobrainrotBytes(modeluser.Password), nil))
+	ret, err := l.svcCtx.UserModel.Insert(l.ctx, modeluser)
 	if err != nil {
 		var mysqlErr *mysql.MySQLError
 		if errors.As(err, &mysqlErr) {

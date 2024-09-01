@@ -51,7 +51,7 @@ func (l *UpdateLogic) Update(in *brainrot.UpdateUserRequest) (*brainrot.UpdateUs
 		return nil, usermodule.ErrDBError
 	}
 
-	err = copier.Copy(modeluser, in)
+	err = copier.CopyWithOption(modeluser, in, copier.Option{IgnoreEmpty: true})
 	if err != nil {
 		return nil, usermodule.ErrCopierCopy.Wrap("%v", err)
 	}

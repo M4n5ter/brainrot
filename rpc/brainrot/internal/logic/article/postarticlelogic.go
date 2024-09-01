@@ -13,6 +13,7 @@ import (
 
 	"github.com/jinzhu/copier"
 	"github.com/zeromicro/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -41,6 +42,21 @@ func (l *PostArticleLogic) PostArticle(in *brainrot.PostArticleRequest) (*brainr
 	userid, err := strconv.Atoi(useridstr)
 	if err != nil {
 		return nil, articlemodule.ErrAIError
+	}
+
+	if len(in.Tags) > 0 {
+		err = l.svcCtx.TagModel.Trans(l.ctx, func(context context.Context, session sqlx.Session) error {
+			for _, tag := range in.Tags {
+				_, err = l.svcCtx.TagModel.FindOneByName(l.ctx, tag)
+				if err != nil {
+					return articlemodule.ErrInvalidInput.Wrap("用户 %d 尝试使用不存在的标签 %s", userid, tag)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	modelarticle := &model.Article{}

@@ -19,8 +19,8 @@ import (
 var (
 	articleFieldNames          = builder.RawFieldNames(&Article{})
 	articleRows                = strings.Join(articleFieldNames, ",")
-	articleRowsExpectAutoSet   = strings.Join(stringx.Remove(articleFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
-	articleRowsWithPlaceHolder = strings.Join(stringx.Remove(articleFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+	articleRowsExpectAutoSet   = strings.Join(stringx.Remove(articleFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`status`", "`update_at`", "`update_time`", "`updated_at`"), ",")
+	articleRowsWithPlaceHolder = strings.Join(stringx.Remove(articleFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`status`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
 
 	cacheArticleIdPrefix            = "cache:article:id:"
 	cacheArticleAuthorIdTitlePrefix = "cache:article:authorId:title:"
@@ -80,7 +80,7 @@ func (m *defaultArticleModel) FindOne(ctx context.Context, id uint64) (*Article,
 	articleIdKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, id)
 	var resp Article
 	err := m.QueryRowCtx(ctx, &resp, articleIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
-		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", articleRows, m.table)
+		query := fmt.Sprintf("select %s from %s where `id` = ? AND `status` = 1 limit 1", articleRows, m.table)
 		return conn.QueryRowCtx(ctx, v, query, id)
 	})
 	switch err {
@@ -97,7 +97,7 @@ func (m *defaultArticleModel) FindOneByAuthorIdTitle(ctx context.Context, author
 	articleAuthorIdTitleKey := fmt.Sprintf("%s%v:%v", cacheArticleAuthorIdTitlePrefix, authorId, title)
 	var resp Article
 	err := m.QueryRowIndexCtx(ctx, &resp, articleAuthorIdTitleKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
-		query := fmt.Sprintf("select %s from %s where `author_id` = ? and `title` = ? limit 1", articleRows, m.table)
+		query := fmt.Sprintf("select %s from %s where `author_id` = ? and `title` = ? AND `status` = 1 limit 1", articleRows, m.table)
 		if err := conn.QueryRowCtx(ctx, &resp, query, authorId, title); err != nil {
 			return nil, err
 		}
@@ -117,8 +117,8 @@ func (m *defaultArticleModel) Insert(ctx context.Context, data *Article) (sql.Re
 	articleAuthorIdTitleKey := fmt.Sprintf("%s%v:%v", cacheArticleAuthorIdTitlePrefix, data.AuthorId, data.Title)
 	articleIdKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, data.Id)
 	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
-		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?, ?)", m.table, articleRowsExpectAutoSet)
-		return conn.ExecCtx(ctx, query, data.AuthorId, data.Author, data.Title, data.Content, data.Tags, data.Poster, data.Status)
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?, ?)", m.table, articleRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.AuthorId, data.Author, data.Title, data.Content, data.Tags, data.Poster)
 	}, articleAuthorIdTitleKey, articleIdKey)
 	return ret, err
 }
@@ -133,7 +133,7 @@ func (m *defaultArticleModel) Update(ctx context.Context, newData *Article) erro
 	articleIdKey := fmt.Sprintf("%s%v", cacheArticleIdPrefix, data.Id)
 	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
 		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, articleRowsWithPlaceHolder)
-		return conn.ExecCtx(ctx, query, newData.AuthorId, newData.Author, newData.Title, newData.Content, newData.Tags, newData.Poster, newData.Status, newData.Id)
+		return conn.ExecCtx(ctx, query, newData.AuthorId, newData.Author, newData.Title, newData.Content, newData.Tags, newData.Poster, newData.Id)
 	}, articleAuthorIdTitleKey, articleIdKey)
 	return err
 }
@@ -143,7 +143,7 @@ func (m *defaultArticleModel) formatPrimary(primary any) string {
 }
 
 func (m *defaultArticleModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", articleRows, m.table)
+	query := fmt.Sprintf("select %s from %s where `id` = ? AND `status` = 1 limit 1", articleRows, m.table)
 	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 

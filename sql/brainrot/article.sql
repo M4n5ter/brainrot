@@ -1,5 +1,5 @@
 CREATE TABLE article (
-    id BIGINT UNSIGNED AUTO_INCREMENT,
+    id BIGINT UNSIGNED AUTO_INCREMENT NOT NULL,
     author_id INT UNSIGNED NOT NULL,
     author VARCHAR(50) NOT NULL, -- The redundancy can help us reduce queries
     title VARCHAR(255) NOT NULL,

@@ -13,29 +13,46 @@ import (
 )
 
 type (
-	DeleteArticleRequest       = brainrot.DeleteArticleRequest
-	DeleteArticleResponse      = brainrot.DeleteArticleResponse
-	Error                      = brainrot.Error
-	GetCurrentUserInfoRequest  = brainrot.GetCurrentUserInfoRequest
-	GetCurrentUserInfoResponse = brainrot.GetCurrentUserInfoResponse
-	MacFields                  = brainrot.MacFields
-	PingRequest                = brainrot.PingRequest
-	PingResponse               = brainrot.PingResponse
-	PostArticleRequest         = brainrot.PostArticleRequest
-	PostArticleResponse        = brainrot.PostArticleResponse
-	RefreshAllArticlesRequest  = brainrot.RefreshAllArticlesRequest
-	RefreshAllArticlesResponse = brainrot.RefreshAllArticlesResponse
-	RefreshTokenRequest        = brainrot.RefreshTokenRequest
-	RefreshTokenResponse       = brainrot.RefreshTokenResponse
-	SearchUsersRequest         = brainrot.SearchUsersRequest
-	SearchUsersResponse        = brainrot.SearchUsersResponse
-	SearchUsersResponse_User   = brainrot.SearchUsersResponse_User
-	SignInRequest              = brainrot.SignInRequest
-	SignInResponse             = brainrot.SignInResponse
-	SignUpRequest              = brainrot.SignUpRequest
-	SignUpResponse             = brainrot.SignUpResponse
-	UpdateUserRequest          = brainrot.UpdateUserRequest
-	UpdateUserResponse         = brainrot.UpdateUserResponse
+	AddTagsRequest                       = brainrot.AddTagsRequest
+	AddTagsResponse                      = brainrot.AddTagsResponse
+	DeleteArticleRequest                 = brainrot.DeleteArticleRequest
+	DeleteArticleResponse                = brainrot.DeleteArticleResponse
+	DeleteCommentRequest                 = brainrot.DeleteCommentRequest
+	DeleteCommentResponse                = brainrot.DeleteCommentResponse
+	DeleteTagRequest                     = brainrot.DeleteTagRequest
+	DeleteTagResponse                    = brainrot.DeleteTagResponse
+	EditCommentRequest                   = brainrot.EditCommentRequest
+	EditCommentResponse                  = brainrot.EditCommentResponse
+	Error                                = brainrot.Error
+	GetCommentsByArticleRequest          = brainrot.GetCommentsByArticleRequest
+	GetCommentsByArticleResponse         = brainrot.GetCommentsByArticleResponse
+	GetCommentsByArticleResponse_Comment = brainrot.GetCommentsByArticleResponse_Comment
+	GetCurrentUserInfoRequest            = brainrot.GetCurrentUserInfoRequest
+	GetCurrentUserInfoResponse           = brainrot.GetCurrentUserInfoResponse
+	GetPresignedURLRequest               = brainrot.GetPresignedURLRequest
+	GetPresignedURLResponse              = brainrot.GetPresignedURLResponse
+	MacFields                            = brainrot.MacFields
+	PingRequest                          = brainrot.PingRequest
+	PingResponse                         = brainrot.PingResponse
+	PostArticleRequest                   = brainrot.PostArticleRequest
+	PostArticleResponse                  = brainrot.PostArticleResponse
+	PostCommentRequest                   = brainrot.PostCommentRequest
+	PostCommentResponse                  = brainrot.PostCommentResponse
+	RefreshAllArticlesRequest            = brainrot.RefreshAllArticlesRequest
+	RefreshAllArticlesResponse           = brainrot.RefreshAllArticlesResponse
+	RefreshTokenRequest                  = brainrot.RefreshTokenRequest
+	RefreshTokenResponse                 = brainrot.RefreshTokenResponse
+	SearchUsersRequest                   = brainrot.SearchUsersRequest
+	SearchUsersResponse                  = brainrot.SearchUsersResponse
+	SearchUsersResponse_User             = brainrot.SearchUsersResponse_User
+	SignInRequest                        = brainrot.SignInRequest
+	SignInResponse                       = brainrot.SignInResponse
+	SignUpRequest                        = brainrot.SignUpRequest
+	SignUpResponse                       = brainrot.SignUpResponse
+	UpdateCommentUsefulnessRequest       = brainrot.UpdateCommentUsefulnessRequest
+	UpdateCommentUsefulnessResponse      = brainrot.UpdateCommentUsefulnessResponse
+	UpdateUserRequest                    = brainrot.UpdateUserRequest
+	UpdateUserResponse                   = brainrot.UpdateUserResponse
 
 	User interface {
 		// Sign up

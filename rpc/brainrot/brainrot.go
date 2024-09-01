@@ -9,7 +9,9 @@ import (
 	"brainrot/pkg/grpcinterceptor/auth/mac"
 	"brainrot/rpc/brainrot/internal/config"
 	articleServer "brainrot/rpc/brainrot/internal/server/article"
+	commentServer "brainrot/rpc/brainrot/internal/server/comment"
 	pingServer "brainrot/rpc/brainrot/internal/server/ping"
+	s3Server "brainrot/rpc/brainrot/internal/server/s3"
 	userServer "brainrot/rpc/brainrot/internal/server/user"
 	"brainrot/rpc/brainrot/internal/svc"
 
@@ -35,6 +37,8 @@ func main() {
 		brainrot.RegisterPingServer(grpcServer, pingServer.NewPingServer(ctx))
 		brainrot.RegisterUserServer(grpcServer, userServer.NewUserServer(ctx))
 		brainrot.RegisterArticleServer(grpcServer, articleServer.NewArticleServer(ctx))
+		brainrot.RegisterCommentServer(grpcServer, commentServer.NewCommentServer(ctx))
+		brainrot.RegisterS3Server(grpcServer, s3Server.NewS3Server(ctx))
 
 		if c.Mode == service.DevMode || c.Mode == service.TestMode {
 			reflection.Register(grpcServer)

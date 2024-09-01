@@ -50,6 +50,12 @@ func main() {
 		return
 	}
 
+	err = brainrot.RegisterS3HandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	log.Printf("Starting gateway server at %s...\n", "8090")
 	gwApp := fiber.New()
 
