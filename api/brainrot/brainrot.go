@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"brainrot/api/brainrot/gatewayoption"
 	"brainrot/api/brainrot/middleware/swagger"
@@ -32,29 +33,7 @@ func main() {
 
 	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 
-	err := brainrot.RegisterPingHandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	err = brainrot.RegisterUserHandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	err = brainrot.RegisterArticleHandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
-	if err != nil {
-		log.Println(err)
-		return
-	}
-
-	err = brainrot.RegisterS3HandlerFromEndpoint(context.Background(), gwmux, ":8080", opts)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	registerhandlers(context.Background(), gwmux, ":8080", opts)
 
 	log.Printf("Starting gateway server at %s...\n", "8090")
 	gwApp := fiber.New()
@@ -74,5 +53,37 @@ func main() {
 	if err := gwApp.Listen(":8090"); err != nil {
 		log.Println(err)
 		return
+	}
+}
+
+func registerhandlers(ctx context.Context, mux *runtime.ServeMux, endpoint string, opts []grpc.DialOption) {
+	err := brainrot.RegisterPingHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	err = brainrot.RegisterUserHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	err = brainrot.RegisterArticleHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	err = brainrot.RegisterCommentHandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
+	}
+
+	err = brainrot.RegisterS3HandlerFromEndpoint(ctx, mux, endpoint, opts)
+	if err != nil {
+		log.Println(err)
+		os.Exit(1)
 	}
 }
