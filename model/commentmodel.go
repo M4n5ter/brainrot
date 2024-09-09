@@ -40,10 +40,13 @@ func (m *customCommentModel) FindAllByArticleID(ctx context.Context, articleID u
 
 	query := fmt.Sprintf("SELECT %s FROM %s WHERE `article_id` = ? AND `status` = 1", commentRows, m.table)
 	var resp []*Comment
-	err := m.QueryRowsNoCacheCtx(ctx, resp, query, articleID)
-	if err != nil {
+	err := m.QueryRowsNoCacheCtx(ctx, &resp, query, articleID)
+	switch err {
+	case nil:
+		return resp, nil
+	case ErrNotFound: //nolint:errorlint
+		return nil, ErrNotFound
+	default:
 		return nil, err
 	}
-
-	return resp, nil
 }

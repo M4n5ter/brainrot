@@ -149,6 +149,7 @@ message SearchUsersResponse {
     string avatar_url = 3;
     string introduction = 4;
     string profile_info = 5;
+    int64 created_at = 6;
   }
   repeated User users = 1;
   option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_schema) = {
@@ -227,12 +228,13 @@ message GetCommentsByArticleRequest {
 }
 message GetCommentsByArticleResponse {
   message Comment {
-    string content = 1;
-    string commenter = 2;
-    uint64 useful_count = 3;
-    uint64 useless_count = 4;
-    int64 created_at = 5;
-    int64 updated_at = 6;
+    uint64 comment_id = 1;
+    string content = 2;
+    string commenter = 3;
+    uint64 useful_count = 4;
+    uint64 useless_count = 5;
+    int64 created_at = 6;
+    int64 updated_at = 7;
   }
   repeated Comment comments = 1;
 }
@@ -254,7 +256,7 @@ message EditCommentRequest {
 message EditCommentResponse {}
 message UpdateCommentUsefulnessRequest {
   uint64 comment_id = 1;
-  bool is_useful = 2; // true 表示增加 useful 数量，false 表示增加 useless 数量
+  bool useful = 2; // true 表示增加 useful 数量，false 表示增加 useless 数量
 }
 message UpdateCommentUsefulnessResponse {
   uint64 useful_count = 1;

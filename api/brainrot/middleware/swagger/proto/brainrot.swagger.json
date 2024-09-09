@@ -625,6 +625,10 @@
     "GetCommentsByArticleResponseComment": {
       "type": "object",
       "properties": {
+        "commentId": {
+          "type": "string",
+          "format": "uint64"
+        },
         "content": {
           "type": "string"
         },
@@ -666,6 +670,10 @@
         },
         "profileInfo": {
           "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "int64"
         }
       }
     },
@@ -1111,7 +1119,7 @@
           "type": "string",
           "format": "uint64"
         },
-        "isUseful": {
+        "useful": {
           "type": "boolean",
           "title": "true 表示增加 useful 数量，false 表示增加 useless 数量"
         }

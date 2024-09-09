@@ -51,6 +51,8 @@ APIKey:
     Whitelist:
       - "/v1/brainrot/user/sign-up"
       - "/v1/brainrot/user/sign-in"
+      - "/v1/brainrot/user/search"
+      - "/v1/brainrot/comment/get-by-article"
 
 Log:
   Stat: false

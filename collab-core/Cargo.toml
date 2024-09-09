@@ -9,6 +9,7 @@ fastwebsockets = { workspace = true, features = ["upgrade"] }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["server"] }
 hyper-util = { workspace = true }
+opendal = { workspace = true, features = ["services-s3"] }
 rustc-hash = { workspace = true }
 tokio = { workspace = true, features = [
     "macros",

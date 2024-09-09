@@ -62,6 +62,7 @@ func (l *SignUpLogic) SignUp(in *brainrot.SignUpRequest) (*brainrot.SignUpRespon
 
 	modeluser.ProfileInfo = "{}"
 	modeluser.Password = hex.EncodeToString(util.HashWithSalt(util.TobrainrotBytes(modeluser.Password), nil))
+	modeluser.Reputation = 10 // 新用户初始声望为 10
 	ret, err := l.svcCtx.UserModel.Insert(l.ctx, modeluser)
 	if err != nil {
 		var mysqlErr *mysql.MySQLError

@@ -2,7 +2,6 @@ package commentlogic
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -70,11 +69,11 @@ func (l *UpdateCommentUsefulnessLogic) UpdateCommentUsefulness(in *brainrot.Upda
 	}
 
 	err = l.svcCtx.CommentModel.Trans(l.ctx, func(ctx context.Context, session sqlx.Session) error {
-		commentQuery := fmt.Sprintf("UPDATE `comment` SET `useful_count` = `useful_count` + 1, `voter_ids` = `%s` WHERE `id` = ? AND `status` = 1", voterIDsStr)
-		if !in.IsUseful {
-			commentQuery = fmt.Sprintf("UPDATE `comment` SET `useless_count` = `useless_count` + 1, `voter_ids` = `%s` WHERE `id` = ? AND `status` = 1", voterIDsStr)
+		commentQuery := "UPDATE `comment` SET `useful_count` = `useful_count` + 1, `voter_ids` = ? WHERE `id` = ? AND `status` = 1"
+		if !in.Useful {
+			commentQuery = "UPDATE `comment` SET `useless_count` = `useless_count` + 1, `voter_ids` = ? WHERE `id` = ? AND `status` = 1"
 		}
-		_, err := session.ExecCtx(ctx, commentQuery, in.CommentId)
+		_, err := session.ExecCtx(ctx, commentQuery, voterIDsStr, in.CommentId)
 		if err != nil {
 			return err
 		}
@@ -87,10 +86,10 @@ func (l *UpdateCommentUsefulnessLogic) UpdateCommentUsefulness(in *brainrot.Upda
 		return nil
 	})
 	if err != nil {
-		return nil, commentmodule.ErrDBError.Wrap("事务失败，更新评论 %d 和用户 %d 失败", in.CommentId, userid)
+		return nil, commentmodule.ErrDBError.Wrap("事务失败，更新评论 %d 和用户 %d 失败，错误为：%v", in.CommentId, userid, err)
 	}
 
-	if in.IsUseful {
+	if in.Useful {
 		modelcomment.UsefulCount++
 	} else {
 		modelcomment.UselessCount++
