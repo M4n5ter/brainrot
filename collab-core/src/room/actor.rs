@@ -52,10 +52,10 @@ pub async fn message_handler(
 ///
 /// ```rust
 /// // 在某处初始化 RoomManagerActor
-/// RoomManager::start_default();
+/// RoomManagerActor::start_default();
 ///
 /// // 在需要使用 RoomManagerActor 的地方获取其地址
-/// let room_manager = RoomManager::from_registry();
+/// let room_manager = RoomManagerActor::from_registry();
 /// ```
 pub struct RoomManagerActor {
     rooms: FxHashMap<RoomID, Addr<RoomActor>>,
