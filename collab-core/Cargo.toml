@@ -4,17 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+actix = { workspace = true }
 anyhow = { workspace = true }
 fastwebsockets = { workspace = true, features = ["upgrade"] }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["server"] }
 hyper-util = { workspace = true }
+loro = { workspace = true }
 opendal = { workspace = true, features = ["services-s3"] }
 rustc-hash = { workspace = true }
-tokio = { workspace = true, features = [
-    "macros",
-    "net",
-    "rt",
-    "rt-multi-thread",
-] }
+tokio = { workspace = true, features = ["macros"] }
 url = { workspace = true }

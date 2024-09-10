@@ -1,7 +1,6 @@
-use std::sync::Arc;
-
+use actix::Actor;
 use anyhow::Result;
-use collab_core::room::{Room, RoomManager};
+use collab_core::room::actor::{self, RoomManagerActor};
 use fastwebsockets::{
     upgrade::{is_upgrade_request, upgrade},
     FragmentCollector, Frame, Payload,
@@ -17,24 +16,20 @@ use hyper_util::rt::TokioIo;
 use tokio::{
     io::{AsyncRead, AsyncWrite},
     net::TcpListener,
-    sync::{mpsc, Mutex},
+    sync::mpsc,
 };
 
-#[tokio::main]
+#[actix::main]
 async fn main() -> Result<()> {
-    let room_manager = Arc::new(Mutex::new(RoomManager::new()));
+    RoomManagerActor::start_default();
 
     let listner = TcpListener::bind("0.0.0.0:8999").await?;
     loop {
         let (stream, _) = listner.accept().await?;
         let io = TokioIo::new(stream);
-        let room_manager = Arc::clone(&room_manager);
-        tokio::spawn(async move {
+        actix::spawn(async move {
             if let Err(err) = Builder::new()
-                .serve_connection(
-                    io,
-                    service_fn(move |req| server_upgrade(req, Arc::clone(&room_manager))),
-                )
+                .serve_connection(io, service_fn(server_upgrade))
                 // https://github.com/hyperium/hyper/issues/1752
                 .with_upgrades()
                 .await
@@ -45,10 +40,7 @@ async fn main() -> Result<()> {
     }
 }
 
-async fn server_upgrade(
-    mut req: Request<Incoming>,
-    room_manager: Arc<Mutex<RoomManager>>,
-) -> Result<Response<Empty<Bytes>>> {
+async fn server_upgrade(mut req: Request<Incoming>) -> Result<Response<Empty<Bytes>>> {
     if !is_upgrade_request(&req) {
         // unwrap is safe here because we know the assume "if any previously configured argument failed to parse or get converted to the internal representation." is false
         return Ok(Response::builder().status(400).body(Empty::new()).unwrap());
@@ -78,18 +70,11 @@ async fn server_upgrade(
 
     let (response, fut) = upgrade(&mut req)?;
 
-    tokio::spawn(async move {
+    actix::spawn(async move {
         let ws = fut.await;
         match ws {
             Ok(ws) => {
-                if let Err(err) = handle(
-                    room_manager,
-                    FragmentCollector::new(ws),
-                    room_id,
-                    connection_id,
-                )
-                .await
-                {
+                if let Err(err) = handle(FragmentCollector::new(ws), room_id, connection_id).await {
                     eprintln!("Error: {}", err);
                 }
             }
@@ -103,7 +88,6 @@ async fn server_upgrade(
 }
 
 async fn handle<S>(
-    room_manager: Arc<Mutex<RoomManager>>,
     mut ws: FragmentCollector<S>,
     room_id: String,
     connection_id: String,
@@ -111,27 +95,20 @@ async fn handle<S>(
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let (tx, mut rx) = mpsc::channel(1);
+    let (msg_tx, ws_rx) = mpsc::channel(1);
+    let (ws_tx, mut msg_rx) = mpsc::channel(1);
+    actix::spawn(actor::message_handler(
+        ws_rx,
+        ws_tx.clone(),
+        room_id.clone(),
+        connection_id.clone(),
+    ));
 
-    // 获取房间并添加连接
-    let room = {
-        let mut manager = room_manager.lock().await;
-        manager.get_or_create_room(room_id)
-    };
-    {
-        room.lock()
-            .await
-            .add_connection(connection_id.to_owned(), tx)
-            .await
-    }
-
-    let room_clone: Arc<Mutex<Room>> = Arc::clone(&room);
-    let connection_id_clone = connection_id.to_owned();
     loop {
         tokio::select! {
-            message = rx.recv() => {
+            message = msg_rx.recv() => {
                 if let Some(message) = message {
-                    ws.write_frame(Frame::binary(Payload::Owned(message))).await?;
+                    ws.write_frame(Frame::binary(Payload::Owned(message.into()))).await?;
                 } else {
                     break
                 }
@@ -141,8 +118,10 @@ where
                     match frame.opcode {
                         fastwebsockets::OpCode::Close => break,
                         fastwebsockets::OpCode::Binary => {
-                            let mut room = room_clone.lock().await;
-                            room.broardcast(frame.payload.to_owned(), &connection_id_clone).await;
+                            msg_tx.send(actor::GenericMessage::Binary(frame.payload.to_vec())).await?;
+                        }
+                        fastwebsockets::OpCode::Text => {
+                            msg_tx.send(actor::GenericMessage::Text(String::from_utf8_lossy(&frame.payload).to_string())).await?;
                         }
                         _ => {}
                     }
@@ -152,6 +131,5 @@ where
             }
         }
     }
-    room.lock().await.remove_connection(connection_id).await;
     Ok(())
 }
