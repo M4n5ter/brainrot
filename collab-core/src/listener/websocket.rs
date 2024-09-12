@@ -17,8 +17,10 @@ use tokio::{
     net::TcpListener,
     sync::mpsc,
 };
+use tracing::error;
 
 use crate::{
+    config::ListenerConfig,
     room::actor::{MessageChan, RoomManagerActor},
     GenericMessage,
 };
@@ -28,14 +30,10 @@ pub struct WebSocketListenerActor {
 }
 
 impl WebSocketListenerActor {
-    pub fn new(addr: impl Into<String>) -> Self {
-        Self { addr: addr.into() }
-    }
-}
-
-impl Default for WebSocketListenerActor {
-    fn default() -> Self {
-        Self::new("0.0.0.0:8999")
+    pub fn new(config: ListenerConfig) -> Self {
+        Self {
+            addr: format!("{}:{}", config.host, config.port),
+        }
     }
 }
 
@@ -60,10 +58,10 @@ impl Actor for WebSocketListenerActor {
                                         .await
                                 });
                             }
-                            Err(err) => eprintln!("Error: {}", err),
+                            Err(err) => error!("Error: {}", err),
                         }
                     },
-                    Err(err) => eprintln!("Error: {}", err),
+                    Err(err) => error!("Error: {}", err),
                 }
             }
             .into_actor(self),
@@ -71,7 +69,6 @@ impl Actor for WebSocketListenerActor {
     }
 }
 
-impl ArbiterService for WebSocketListenerActor {}
 impl Supervised for WebSocketListenerActor {}
 
 async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<Bytes>>> {
@@ -107,10 +104,10 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
                     handle_ws(ws, room_id, connection_id)
                         .await
                         .unwrap_or_else(|err| {
-                            eprintln!("WebSocket handling error: {}", err);
+                            error!("WebSocket handling error: {}", err);
                         })
                 }
-                Err(err) => eprintln!("WebSocket upgrade error: {}", err),
+                Err(err) => error!("WebSocket upgrade error: {}", err),
             }
         });
 

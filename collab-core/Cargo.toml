@@ -7,6 +7,10 @@ edition = "2021"
 actix = { workspace = true }
 anyhow = { workspace = true }
 bytes = { workspace = true }
+config = { workspace = true, default-features = false, features = [
+    "convert_case",
+    "toml",
+] }
 fastwebsockets = { workspace = true, features = ["upgrade"] }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["server"] }
@@ -14,5 +18,8 @@ hyper-util = { workspace = true }
 loro = { workspace = true }
 opendal = { workspace = true, features = ["services-s3"] }
 rustc-hash = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 url = { workspace = true }

@@ -7,3 +7,4 @@ target/
 
 # files
 .DS_Store
+collab-core.toml

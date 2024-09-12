@@ -5,19 +5,23 @@ use bytes::Bytes;
 use opendal::{
     layers::LoggingLayer, raw::PresignedRequest, services::S3, Entry, Metadata, Operator,
 };
+use tracing::error;
 
+use crate::config::S3Config;
+
+#[derive(Debug)]
 pub struct S3Actor {
     operator: Arc<Operator>,
 }
 
 impl S3Actor {
-    pub fn new() -> Self {
+    pub fn new(config: S3Config) -> Self {
         let builder = S3::default()
-            .endpoint("http://127.0.0.1:9000")
-            .access_key_id("bojdSMerpmu7lm8WqipC")
-            .secret_access_key("BMabriVax4XjP4NImQButgkqcd3SyCIvcz841kWo")
-            .region("cn-east-1")
-            .bucket("public-brainrot");
+            .endpoint(&config.endpoint)
+            .access_key_id(&config.access_key)
+            .secret_access_key(&config.secret_key)
+            .region(&config.region)
+            .bucket(&config.bucket);
         let op = {
             match Operator::new(builder) {
                 Ok(opb) => opb.layer(LoggingLayer::default()).finish(),
@@ -33,8 +37,9 @@ impl S3Actor {
 }
 
 impl Default for S3Actor {
+    // This should not be used. Use `S3Actor::new()` instead.
     fn default() -> Self {
-        Self::new()
+        panic!("S3Actor::default() should not be used. Use `S3Actor::new()` instead.");
     }
 }
 
@@ -83,7 +88,7 @@ impl Handler<ReadFile> for S3Actor {
                 .map(|res, _, _| match res {
                     Ok(data) => Ok(data.to_bytes()),
                     Err(e) => {
-                        eprintln!("Failed to read file: {}", e);
+                        error!("Failed to read file: {}", e);
                         Err(e)
                     }
                 }),
@@ -124,6 +129,7 @@ pub struct WriteFile {
 impl Handler<Delete> for S3Actor {
     type Result = ResponseActFuture<Self, Result<(), String>>;
 
+    #[tracing::instrument]
     fn handle(&mut self, msg: Delete, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
@@ -133,7 +139,7 @@ impl Handler<Delete> for S3Actor {
     }
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<(), String>")]
 pub struct Delete {
     pub path: String,
@@ -166,6 +172,7 @@ pub struct Copy {
 impl Handler<List> for S3Actor {
     type Result = ResponseActFuture<Self, Result<Vec<Entry>, String>>;
 
+    #[tracing::instrument]
     fn handle(&mut self, msg: List, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
@@ -175,7 +182,7 @@ impl Handler<List> for S3Actor {
     }
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<Vec<Entry>, String>")]
 pub struct List {
     pub path: String,
@@ -202,6 +209,7 @@ pub struct Stat {
 impl Handler<PresignRead> for S3Actor {
     type Result = ResponseActFuture<Self, Result<PresignedRequest, String>>;
 
+    #[tracing::instrument]
     fn handle(&mut self, msg: PresignRead, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
@@ -216,7 +224,7 @@ impl Handler<PresignRead> for S3Actor {
     }
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<PresignedRequest, String>")]
 pub struct PresignRead {
     pub path: String,
@@ -226,6 +234,7 @@ pub struct PresignRead {
 impl Handler<PresignWrite> for S3Actor {
     type Result = ResponseActFuture<Self, Result<PresignedRequest, String>>;
 
+    #[tracing::instrument]
     fn handle(&mut self, msg: PresignWrite, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
@@ -240,7 +249,7 @@ impl Handler<PresignWrite> for S3Actor {
     }
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<PresignedRequest, String>")]
 pub struct PresignWrite {
     pub path: String,
@@ -250,6 +259,7 @@ pub struct PresignWrite {
 impl Handler<PresignStat> for S3Actor {
     type Result = ResponseActFuture<Self, Result<PresignedRequest, String>>;
 
+    #[tracing::instrument]
     fn handle(&mut self, msg: PresignStat, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
@@ -264,7 +274,7 @@ impl Handler<PresignStat> for S3Actor {
     }
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<PresignedRequest, String>")]
 pub struct PresignStat {
     pub path: String,

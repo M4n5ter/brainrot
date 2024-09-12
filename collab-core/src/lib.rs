@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use bytes::{Bytes, BytesMut};
 
+pub mod config;
 pub mod listener;
 pub mod room;
 pub mod storage;

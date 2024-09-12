@@ -1,0 +1,13 @@
+[logger]
+level = "info"
+
+[listener]
+host = "0.0.0.0"
+port = "8999"
+
+[s3]
+endpoint = "http://localhost:9000"
+region = "cn-east-1"
+bucket = "public-brainrot"
+access_key = ""
+secret_key = ""

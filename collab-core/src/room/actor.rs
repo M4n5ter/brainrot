@@ -4,6 +4,7 @@ use bytes::Bytes;
 use loro::LoroDoc;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{Receiver, Sender};
+use tracing::error;
 
 use crate::GenericMessage;
 
@@ -61,7 +62,7 @@ impl Handler<MessageChan> for RoomManagerActor {
                     {
                         Ok(room) => room,
                         Err(e) => {
-                            eprintln!("Failed to join room: {:?}", e);
+                            error!("Failed to join room: {:?}", e);
                             return;
                         }
                     }
@@ -237,7 +238,7 @@ impl Handler<SyncDoc> for RoomActor {
 
     fn handle(&mut self, msg: SyncDoc, _: &mut Self::Context) {
         if let Err(e) = self.doc.import(&msg.0) {
-            eprintln!("Failed to import doc: {:?}", e);
+            error!("Failed to import doc: {:?}", e);
         };
     }
 }
@@ -306,7 +307,7 @@ impl Handler<SendMessage> for ConnectionActor {
         Box::pin(
             async move {
                 if let Err(e) = tx.send(msg.0).await {
-                    eprintln!("Failed to send message: {:?}", e)
+                    error!("Failed to send message: {:?}", e)
                 }
             }
             .into_actor(self),
