@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 actix = { workspace = true }
 anyhow = { workspace = true }
+bytes = { workspace = true }
 fastwebsockets = { workspace = true, features = ["upgrade"] }
 http-body-util = { workspace = true }
 hyper = { workspace = true, features = ["server"] }
@@ -13,5 +14,5 @@ hyper-util = { workspace = true }
 loro = { workspace = true }
 opendal = { workspace = true, features = ["services-s3"] }
 rustc-hash = { workspace = true }
-tokio = { workspace = true, features = ["macros"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 url = { workspace = true }

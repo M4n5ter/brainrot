@@ -1,52 +1,11 @@
 use actix::prelude::*;
 use anyhow::Result;
+use bytes::Bytes;
+use loro::LoroDoc;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{Receiver, Sender};
 
-pub async fn message_handler(
-    mut msg_rx: Receiver<GenericMessage>,
-    msg_tx: Sender<GenericMessage>,
-    room_id: RoomID,
-    connection_id: ConnectionID,
-) -> Result<()> {
-    let room_manager = RoomManagerActor::from_registry();
-
-    // 创建Connection Actor
-    let connection = ConnectionActor::new(msg_tx).start();
-
-    // 加入房间
-    let room = room_manager
-        .send(JoinRoom {
-            room_id: room_id.clone(),
-            connection_id: connection_id.clone(),
-            connection: connection.clone(),
-        })
-        .await?;
-
-    // 处理消息
-    loop {
-        tokio::select! {
-            // 接收到消息后广播到房间内的其他连接
-            Some(msg) = msg_rx.recv() => {
-                room.do_send(BroadcastMessage {
-                    message: msg,
-                    sender_id: connection_id.clone(),
-                });
-            }
-            else => {
-                break;
-            }
-        }
-    }
-
-    // 离开房间
-    room_manager.do_send(LeaveRoom {
-        room_id,
-        connection_id,
-    });
-
-    Ok(())
-}
+use crate::GenericMessage;
 
 /// RoomManagerActor 是一个系统级别的Actor，用于管理所有的房间
 ///
@@ -83,6 +42,62 @@ impl Actor for RoomManagerActor {
 // 使 RoomManager 成为系统服务
 impl SystemService for RoomManagerActor {}
 impl Supervised for RoomManagerActor {}
+
+impl Handler<MessageChan> for RoomManagerActor {
+    type Result = ();
+    fn handle(&mut self, mut mc: MessageChan, ctx: &mut Self::Context) {
+        let connection = ConnectionActor::new(mc.tx).start();
+        ctx.spawn(
+            async move {
+                let room_manager = RoomManagerActor::from_registry();
+                let room = {
+                    match room_manager
+                        .send(JoinRoom {
+                            room_id: mc.room_id.clone(),
+                            connection_id: mc.connection_id.clone(),
+                            connection,
+                        })
+                        .await
+                    {
+                        Ok(room) => room,
+                        Err(e) => {
+                            eprintln!("Failed to join room: {:?}", e);
+                            return;
+                        }
+                    }
+                };
+
+                loop {
+                    tokio::select! {
+                        Some(msg) = mc.rx.recv() => {
+                            room.do_send(BroadcastMessage {
+                                message: msg,
+                                sender_id: mc.connection_id.clone(),
+                            });
+                        }
+                        else => {
+                            room_manager.do_send(LeaveRoom {
+                                room_id: mc.room_id.clone(),
+                                connection_id: mc.connection_id.clone(),
+                            });
+                            break;
+                        }
+                    }
+                }
+            }
+            .into_actor(self),
+        );
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct MessageChan {
+    pub rx: Receiver<GenericMessage>,
+    pub tx: Sender<GenericMessage>,
+    pub room_id: RoomID,
+    pub connection_id: ConnectionID,
+}
 
 impl Handler<RemoveRoom> for RoomManagerActor {
     type Result = ();
@@ -142,6 +157,7 @@ struct LeaveRoom {
 
 struct RoomActor {
     connections: FxHashMap<ConnectionID, Addr<ConnectionActor>>,
+    doc: LoroDoc,
 }
 type ConnectionID = String;
 
@@ -149,6 +165,7 @@ impl RoomActor {
     pub fn new() -> Self {
         RoomActor {
             connections: FxHashMap::default(),
+            doc: LoroDoc::new(),
         }
     }
 }
@@ -160,10 +177,13 @@ impl Actor for RoomActor {
 impl Handler<BroadcastMessage> for RoomActor {
     type Result = ();
 
-    fn handle(&mut self, msg: BroadcastMessage, _: &mut Self::Context) {
+    fn handle(&mut self, msg: BroadcastMessage, ctx: &mut Self::Context) {
+        let sender_id = msg.sender_id;
+        let msg: Bytes = msg.message.into();
+        ctx.notify(SyncDoc(msg.clone()));
         for (id, conn) in self.connections.iter_mut() {
-            if id != &msg.sender_id {
-                conn.do_send(SendMessage(msg.message.clone()));
+            if id != &sender_id {
+                conn.do_send(SendMessage(msg.clone().into()));
             }
         }
     }
@@ -180,6 +200,9 @@ impl Handler<AddConnection> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: AddConnection, _: &mut Self::Context) {
+        msg.connection.do_send(SendMessage(GenericMessage::from(
+            self.doc.export_snapshot(),
+        )));
         self.connections.insert(msg.id, msg.connection);
     }
 }
@@ -208,6 +231,33 @@ impl Handler<RemoveConnection> for RoomActor {
 struct RemoveConnection {
     id: ConnectionID,
 }
+
+impl Handler<SyncDoc> for RoomActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: SyncDoc, _: &mut Self::Context) {
+        if let Err(e) = self.doc.import(&msg.0) {
+            eprintln!("Failed to import doc: {:?}", e);
+        };
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct SyncDoc(Bytes);
+
+impl Handler<GetSnapshot> for RoomActor {
+    // 这里永远不会返回错误，由于我们无法为 Bytes 实现 MessageResponse trait，所以使用这种处理方式。
+    type Result = Result<Bytes, ()>;
+
+    fn handle(&mut self, _: GetSnapshot, _: &mut Self::Context) -> Self::Result {
+        Ok(self.doc.export_snapshot().into())
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<Bytes,()>")]
+struct GetSnapshot;
 
 impl Handler<StopRoom> for RoomActor {
     type Result = ();
@@ -249,16 +299,18 @@ impl Actor for ConnectionActor {
 }
 
 impl Handler<SendMessage> for ConnectionActor {
-    type Result = ();
+    type Result = ResponseActFuture<Self, ()>;
 
-    fn handle(&mut self, msg: SendMessage, ctx: &mut Self::Context) {
+    fn handle(&mut self, msg: SendMessage, _: &mut Self::Context) -> Self::Result {
         let tx = self.tx.clone();
-        let fut = async move {
-            if let Err(e) = tx.send(msg.0).await {
-                eprintln!("Failed to send message: {:?}", e)
+        Box::pin(
+            async move {
+                if let Err(e) = tx.send(msg.0).await {
+                    eprintln!("Failed to send message: {:?}", e)
+                }
             }
-        };
-        ctx.spawn(fut.into_actor(self));
+            .into_actor(self),
+        )
     }
 }
 
@@ -278,39 +330,3 @@ impl Handler<StopConnection> for ConnectionActor {
 #[derive(Message)]
 #[rtype(result = "()")]
 struct StopConnection;
-
-#[derive(Clone, Debug)]
-pub enum GenericMessage {
-    Text(String),
-    Binary(Vec<u8>),
-}
-
-impl From<String> for GenericMessage {
-    fn from(s: String) -> Self {
-        GenericMessage::Text(s)
-    }
-}
-
-impl From<Vec<u8>> for GenericMessage {
-    fn from(v: Vec<u8>) -> Self {
-        GenericMessage::Binary(v)
-    }
-}
-
-impl From<GenericMessage> for Vec<u8> {
-    fn from(msg: GenericMessage) -> Self {
-        match msg {
-            GenericMessage::Text(s) => s.into_bytes(),
-            GenericMessage::Binary(v) => v,
-        }
-    }
-}
-
-impl From<GenericMessage> for String {
-    fn from(msg: GenericMessage) -> Self {
-        match msg {
-            GenericMessage::Text(s) => s,
-            GenericMessage::Binary(v) => String::from_utf8_lossy(&v).to_string(),
-        }
-    }
-}

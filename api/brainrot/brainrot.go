@@ -41,7 +41,7 @@ func main() {
 	gwApp.Use(compress.New())
 	gwApp.Use(helmet.New())
 	gwApp.Use(cors.New(cors.Config{
-		AllowOrigins:     "http://localhost:5173", // 允许的前端地址
+		AllowOrigins:     "http://localhost:5173,http://192.168.1.100:5173", // 允许的前端地址
 		AllowCredentials: true,
 	}))
 	gwApp.Use(idempotency.New())
