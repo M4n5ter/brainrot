@@ -20,6 +20,6 @@ opendal = { workspace = true, features = ["services-s3"] }
 rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-tracing = { workspace = true }
+tracing = { workspace = true, features = ["release_max_level_warn"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 url = { workspace = true }

@@ -18,6 +18,7 @@ async fn main() -> Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     let listener_rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(1) // Maybe we need more threads in the future. Put `tokio::spawn` to use them.
         .enable_all()
         .build()
         .context("Failed to build listener runtime")?;
@@ -26,7 +27,6 @@ async fn main() -> Result<()> {
 
     S3Actor::start_service(&Arbiter::current());
     RoomManagerActor::start_service(&Arbiter::current());
-
     listener_arbiter.spawn_fn(|| {
         WebSocketListenerActor::start_service();
     });

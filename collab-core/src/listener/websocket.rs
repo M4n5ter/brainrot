@@ -245,7 +245,6 @@ where
                         }
                     }
                 }
-                drop(msg_tx);
                 addr.do_send(CloseConnection);
             }
             .into_actor(self),
