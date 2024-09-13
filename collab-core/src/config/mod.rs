@@ -1,16 +1,21 @@
+use std::sync::LazyLock;
+
 use anyhow::anyhow;
 use config::{Environment, File};
 use serde::Deserialize;
 
+pub static SETTINGS: LazyLock<Settings> =
+    LazyLock::new(|| Settings::new().expect("Failed to load settings"));
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Settings {
-    pub logger: LoggerConfig,
-    pub listener: ListenerConfig,
-    pub s3: S3Config,
+    logger: LoggerConfig,
+    listener: ListenerConfig,
+    s3: S3Config,
 }
 
 impl Settings {
-    pub fn new() -> Result<Self, config::ConfigError> {
+    fn new() -> Result<Self, config::ConfigError> {
         let settings = config::Config::builder()
             .add_source(File::with_name("collab-core.toml").required(false))
             .add_source(File::with_name("config/collab-core.toml").required(false))
@@ -27,6 +32,18 @@ impl Settings {
             )
             .build()?;
         settings.try_deserialize()
+    }
+
+    pub fn logger(&self) -> LoggerConfig {
+        self.logger.clone()
+    }
+
+    pub fn listener(&self) -> ListenerConfig {
+        self.listener.clone()
+    }
+
+    pub fn s3(&self) -> S3Config {
+        self.s3.clone()
     }
 }
 

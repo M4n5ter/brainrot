@@ -1,74 +1,91 @@
+use std::sync::Arc;
+
 use actix::prelude::*;
-use anyhow::Result;
+use anyhow::{anyhow, Result};
+use bytes::BytesMut;
+use dev::Registry;
 use fastwebsockets::{
     upgrade::{is_upgrade_request, upgrade},
-    FragmentCollector, Frame, Payload,
+    CloseCode, FragmentCollectorRead, Frame, Payload, WebSocketWrite,
 };
 use http_body_util::Empty;
 use hyper::{
     body::{Bytes, Incoming},
     server::conn::http1::Builder,
     service::service_fn,
+    upgrade::Upgraded,
     Request, Response,
 };
 use hyper_util::rt::TokioIo;
 use tokio::{
-    io::{AsyncRead, AsyncWrite},
+    io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf},
     net::TcpListener,
-    sync::mpsc,
+    sync::{mpsc, Mutex},
 };
-use tracing::error;
+use tracing::{error, trace};
 
 use crate::{
-    config::ListenerConfig,
+    config::{ListenerConfig, SETTINGS},
     room::actor::{MessageChan, RoomManagerActor},
     GenericMessage,
 };
 
-pub struct WebSocketListenerActor {
-    addr: String,
+type WebSocketConnectionAddr =
+    Addr<WebsocketConnectionActor<ReadHalf<TokioIo<Upgraded>>, WriteHalf<TokioIo<Upgraded>>>>;
+
+pub struct WebSocketListenerActor
+// where
+//     S: AsyncRead + AsyncWrite + Unpin + 'static,
+{
+    connections: Vec<WebSocketConnectionAddr>,
+    config: ListenerConfig,
 }
 
 impl WebSocketListenerActor {
     pub fn new(config: ListenerConfig) -> Self {
         Self {
-            addr: format!("{}:{}", config.host, config.port),
+            connections: Vec::new(),
+            config,
         }
+    }
+}
+
+impl Default for WebSocketListenerActor {
+    fn default() -> Self {
+        Self::new(SETTINGS.listener())
     }
 }
 
 impl Actor for WebSocketListenerActor {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
-        let addr = self.addr.clone();
-
-        ctx.spawn(
-            async move {
-                match TcpListener::bind(addr.to_owned()).await {
-                    Ok(listener) => loop {
-                        match listener.accept().await {
-                            Ok((stream, _)) => {
-                                let io = TokioIo::new(stream);
-
-                                actix::spawn(async move {
-                                    Builder::new()
-                                        .serve_connection(io, service_fn(handle_connection))
-                                        .with_upgrades()
-                                        .await
-                                });
-                            }
-                            Err(err) => error!("Error: {}", err),
+    fn started(&mut self, _: &mut Self::Context) {
+        let addr = format!("{}:{}", self.config.host, self.config.port);
+        Arbiter::current().spawn(async move {
+            match TcpListener::bind(addr.to_owned()).await {
+                Ok(listener) => loop {
+                    match listener.accept().await {
+                        Ok((stream, _)) => {
+                            let io = TokioIo::new(stream);
+                            let _ = Builder::new()
+                                .serve_connection(io, service_fn(handle_connection))
+                                .with_upgrades()
+                                .await;
                         }
-                    },
-                    Err(err) => error!("Error: {}", err),
-                }
+                        Err(err) => error!("TCP accept error: {}", err),
+                    }
+                },
+                Err(err) => error!("TCP bind error: {}", err),
             }
-            .into_actor(self),
-        );
+        });
     }
 }
 
+impl ArbiterService for WebSocketListenerActor {
+    fn service_started(&mut self, ctx: &mut Context<Self>) {
+        Registry::set(ctx.address());
+    }
+}
 impl Supervised for WebSocketListenerActor {}
 
 async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<Bytes>>> {
@@ -84,10 +101,12 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
                 }
             }
         } else {
+            // unwrap is safe here.
             return Ok(Response::builder().status(400).body(Empty::new()).unwrap());
         }
 
         if room_id.is_none() || connection_id.is_none() {
+            // unwrap is safe here.
             return Ok(Response::builder().status(400).body(Empty::new()).unwrap());
         }
 
@@ -97,15 +116,22 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
 
         let (response, fut) = upgrade(&mut req)?;
 
+        let listener_addr = WebSocketListenerActor::from_registry();
         actix::spawn(async move {
             match fut.await {
-                Ok(ws) => {
-                    let ws = FragmentCollector::new(ws);
-                    handle_ws(ws, room_id, connection_id)
-                        .await
-                        .unwrap_or_else(|err| {
-                            error!("WebSocket handling error: {}", err);
-                        })
+                Ok(mut ws) => {
+                    trace!("WebSocket upgrade successful");
+                    ws.set_auto_close(false);
+                    let (ws_read, ws_write) = ws.split(tokio::io::split);
+                    let addr = WebsocketConnectionActor::new(
+                        FragmentCollectorRead::new(ws_read),
+                        ws_write,
+                        room_id,
+                        connection_id,
+                    )
+                    .start();
+                    trace!("WebSocket connection established");
+                    listener_addr.do_send(AddWebsocketConnection(addr));
                 }
                 Err(err) => error!("WebSocket upgrade error: {}", err),
             }
@@ -113,52 +139,247 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
 
         Ok(response)
     } else {
+        // unwrap is safe here.
         Ok(Response::builder().status(400).body(Empty::new()).unwrap())
     }
 }
 
-async fn handle_ws<S>(
-    mut ws: FragmentCollector<S>,
+impl Handler<AddWebsocketConnection> for WebSocketListenerActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: AddWebsocketConnection, _: &mut Self::Context) {
+        self.connections.push(msg.0);
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct AddWebsocketConnection(WebSocketConnectionAddr);
+
+struct WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
+{
+    read_half: Arc<Mutex<FragmentCollectorRead<R>>>,
+    write_half: Arc<Mutex<WebSocketWrite<W>>>,
     room_id: String,
     connection_id: String,
-) -> Result<()>
+}
+
+impl<R, W> WebsocketConnectionActor<R, W>
 where
-    S: AsyncRead + AsyncWrite + Unpin,
+    R: AsyncRead + Unpin,
+    W: AsyncWrite + Unpin,
 {
-    let (msg_tx, ws_rx) = mpsc::channel(1);
-    let (ws_tx, mut msg_rx) = mpsc::channel(1);
+    pub fn new(
+        read_half: FragmentCollectorRead<R>,
+        write_half: WebSocketWrite<W>,
+        room_id: String,
+        connection_id: String,
+    ) -> Self {
+        Self {
+            read_half: Arc::new(Mutex::new(read_half)),
+            write_half: Arc::new(Mutex::new(write_half)),
+            room_id,
+            connection_id,
+        }
+    }
+}
 
-    RoomManagerActor::from_registry().do_send(MessageChan {
-        room_id,
-        connection_id,
-        tx: ws_tx,
-        rx: ws_rx,
-    });
+impl<R, W> Actor for WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin + 'static,
+    W: AsyncWrite + Unpin + 'static,
+{
+    type Context = Context<Self>;
 
-    loop {
-        tokio::select! {
-            Ok(frame) = ws.read_frame() => {
-                match frame.opcode {
-                    fastwebsockets::OpCode::Close => break,
+    fn started(&mut self, ctx: &mut Self::Context) {
+        let (msg_tx, ws_rx) = mpsc::channel(1);
+        let (ws_tx, mut msg_rx) = mpsc::channel(1);
+
+        RoomManagerActor::from_registry().do_send(MessageChan {
+            room_id: self.room_id.to_owned(),
+            connection_id: self.connection_id.to_owned(),
+            tx: ws_tx,
+            rx: ws_rx,
+        });
+
+        let addr = ctx.address();
+        let addr2 = addr.clone();
+        ctx.spawn(
+            async move {
+                loop {
+                    tokio::select! {
+                        Ok(frame) = addr2.send(ReadFrame) => {
+                            match frame {
+                                Ok(message) => {
+                                    if let Err(e) = msg_tx.send(message).await{
+                                        error!("Failed to send message: {:?}", e);
+                                        break;
+                                    };
+                                }
+                                Err(_) => break,
+                            }
+                        }
+                        message = msg_rx.recv() => {
+                            match message {
+                                Some(message) => {
+                                    match message {
+                                        GenericMessage::Binary(_) => {
+                                            addr2.do_send(WriteFrame {
+                                                payload: BytesMut::from(message),
+                                                opcode: fastwebsockets::OpCode::Binary,
+                                            });
+                                        }
+                                        GenericMessage::Text(_) => {
+                                            addr2.do_send(WriteFrame {
+                                                payload: BytesMut::from(message),
+                                                opcode: fastwebsockets::OpCode::Text,
+                                            });
+                                        }
+                                    }
+                                }
+                                None => break,
+                            }
+                        }
+                    }
+                }
+                drop(msg_tx);
+                addr.do_send(CloseConnection);
+            }
+            .into_actor(self),
+        );
+    }
+}
+
+impl<R, W> Handler<ReadFrame> for WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin + 'static,
+    W: AsyncWrite + Unpin + 'static,
+{
+    type Result = ResponseActFuture<Self, Result<GenericMessage>>;
+
+    fn handle(&mut self, _: ReadFrame, _: &mut Self::Context) -> Self::Result {
+        let read_half = Arc::clone(&self.read_half);
+        Box::pin(
+            async move {
+                match read_half
+                    .lock()
+                    .await
+                    .read_frame(&mut |frame| async move {
+                        if frame.opcode == fastwebsockets::OpCode::Close {
+                            return Err(fastwebsockets::WebSocketError::ConnectionClosed);
+                        }
+                        Ok(())
+                    })
+                    .await
+                {
+                    Ok(frame) => match frame.opcode {
+                        fastwebsockets::OpCode::Binary => Ok(GenericMessage::Binary(
+                            Bytes::copy_from_slice(&frame.payload),
+                        )),
+                        fastwebsockets::OpCode::Text => Ok(GenericMessage::Text(
+                            String::from_utf8_lossy(&frame.payload).to_string(),
+                        )),
+                        _ => Err(anyhow!("Invalid opcode")),
+                    },
+                    Err(err) => Err(err.into()),
+                }
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<GenericMessage>")]
+struct ReadFrame;
+
+impl<R, W> Handler<WriteFrame> for WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin + 'static,
+    W: AsyncWrite + Unpin + 'static,
+{
+    type Result = ResponseActFuture<Self, Result<()>>;
+
+    fn handle(&mut self, msg: WriteFrame, _: &mut Self::Context) -> Self::Result {
+        let write_half = Arc::clone(&self.write_half);
+        Box::pin(
+            async move {
+                let mut write_half = write_half.lock().await;
+                match msg.opcode {
                     fastwebsockets::OpCode::Binary => {
-                        let payload = Bytes::copy_from_slice(&frame.payload);
-                        msg_tx.send(GenericMessage::Binary(payload)).await?;
+                        write_half
+                            .write_frame(Frame::binary(Payload::Bytes(msg.payload)))
+                            .await?;
                     }
                     fastwebsockets::OpCode::Text => {
-                        let payload = frame.payload.to_vec();
-                        msg_tx
-                            .send(GenericMessage::Text(String::from_utf8_lossy(&payload).to_string()))
+                        write_half
+                            .write_frame(Frame::text(Payload::Bytes(msg.payload)))
                             .await?;
                     }
                     _ => {}
-            }},
-            message = msg_rx.recv() => {
-                 match message {
-                    Some(message) => ws.write_frame(Frame::binary(Payload::Bytes(message.into()))).await?,
-                    None => break,
                 }
+                trace!("Frame written");
+                Ok(())
             }
-        }
+            .into_actor(self),
+        )
     }
-    Ok(())
 }
+
+#[derive(Message)]
+#[rtype(result = "Result<()>")]
+struct WriteFrame {
+    payload: BytesMut,
+    opcode: fastwebsockets::OpCode,
+}
+
+impl<R, W> Handler<CloseConnection> for WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin + 'static,
+    W: AsyncWrite + Unpin + 'static,
+{
+    type Result = ResponseActFuture<Self, ()>;
+
+    fn handle(&mut self, _: CloseConnection, ctx: &mut Self::Context) -> Self::Result {
+        let addr = ctx.address();
+        Box::pin(
+            async move {
+                let code: u16 = CloseCode::Normal.into();
+                let reason = "server closed this connection".as_bytes();
+                let mut payload = Vec::with_capacity(2 + reason.len());
+                payload.extend_from_slice(&code.to_be_bytes());
+                payload.extend_from_slice(reason);
+
+                addr.do_send(WriteFrame {
+                    payload: Bytes::from(payload).into(),
+                    opcode: fastwebsockets::OpCode::Close,
+                });
+                addr.do_send(StopWebsocketConnection);
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct CloseConnection;
+
+impl<R, W> Handler<StopWebsocketConnection> for WebsocketConnectionActor<R, W>
+where
+    R: AsyncRead + Unpin + 'static,
+    W: AsyncWrite + Unpin + 'static,
+{
+    type Result = ();
+
+    fn handle(&mut self, _: StopWebsocketConnection, ctx: &mut Self::Context) {
+        ctx.stop();
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct StopWebsocketConnection;

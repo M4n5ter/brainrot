@@ -2,12 +2,13 @@ use std::{sync::Arc, time::Duration};
 
 use actix::prelude::*;
 use bytes::Bytes;
+use dev::SystemRegistry;
 use opendal::{
     layers::LoggingLayer, raw::PresignedRequest, services::S3, Entry, Metadata, Operator,
 };
 use tracing::error;
 
-use crate::config::S3Config;
+use crate::config::{S3Config, SETTINGS};
 
 #[derive(Debug)]
 pub struct S3Actor {
@@ -37,9 +38,8 @@ impl S3Actor {
 }
 
 impl Default for S3Actor {
-    // This should not be used. Use `S3Actor::new()` instead.
     fn default() -> Self {
-        panic!("S3Actor::default() should not be used. Use `S3Actor::new()` instead.");
+        Self::new(SETTINGS.s3())
     }
 }
 
@@ -47,8 +47,26 @@ impl Actor for S3Actor {
     type Context = Context<Self>;
 }
 
-impl SystemService for S3Actor {}
+impl SystemService for S3Actor {
+    fn service_started(&mut self, ctx: &mut Context<Self>) {
+        SystemRegistry::set(ctx.address())
+    }
+}
 impl Supervised for S3Actor {}
+
+impl Handler<SetOperator> for S3Actor {
+    type Result = ();
+
+    fn handle(&mut self, msg: SetOperator, _: &mut Self::Context) {
+        self.operator = Arc::new(msg.operator);
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct SetOperator {
+    pub operator: Operator,
+}
 
 impl Handler<CreateDir> for S3Actor {
     type Result = ResponseActFuture<Self, Result<(), String>>;

@@ -1,12 +1,13 @@
 use actix::prelude::*;
 use anyhow::Result;
 use bytes::Bytes;
+use dev::SystemRegistry;
 use loro::LoroDoc;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::error;
 
-use crate::GenericMessage;
+use crate::{storage::s3::S3Actor, GenericMessage};
 
 /// RoomManagerActor 是一个系统级别的Actor，用于管理所有的房间
 ///
@@ -40,8 +41,11 @@ impl Actor for RoomManagerActor {
     type Context = Context<Self>;
 }
 
-// 使 RoomManager 成为系统服务
-impl SystemService for RoomManagerActor {}
+impl SystemService for RoomManagerActor {
+    fn service_started(&mut self, ctx: &mut Context<Self>) {
+        SystemRegistry::set(ctx.address())
+    }
+}
 impl Supervised for RoomManagerActor {}
 
 impl Handler<MessageChan> for RoomManagerActor {
@@ -264,7 +268,7 @@ impl Handler<StopRoom> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, _: StopRoom, ctx: &mut Self::Context) {
-        // TODO: 有需要的话需要进行资源清理
+        let s3 = S3Actor::from_registry();
         ctx.stop();
     }
 }
