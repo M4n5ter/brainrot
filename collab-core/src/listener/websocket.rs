@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix::prelude::*;
 use anyhow::{anyhow, Result};
 use bytes::BytesMut;
-use dev::Registry;
+use dev::{MessageResponse, Registry};
 use fastwebsockets::{
     upgrade::{is_upgrade_request, upgrade},
     CloseCode, FragmentCollectorRead, Frame, Payload, WebSocketWrite,
@@ -20,9 +20,9 @@ use hyper_util::rt::TokioIo;
 use tokio::{
     io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf},
     net::TcpListener,
-    sync::{mpsc, Mutex},
+    sync::{mpsc, oneshot, Mutex},
 };
-use tracing::{error, trace};
+use tracing::{error, info};
 
 use crate::{
     config::{ListenerConfig, SETTINGS},
@@ -33,10 +33,7 @@ use crate::{
 type WebSocketConnectionAddr =
     Addr<WebsocketConnectionActor<ReadHalf<TokioIo<Upgraded>>, WriteHalf<TokioIo<Upgraded>>>>;
 
-pub struct WebSocketListenerActor
-// where
-//     S: AsyncRead + AsyncWrite + Unpin + 'static,
-{
+pub struct WebSocketListenerActor {
     connections: Vec<WebSocketConnectionAddr>,
     config: ListenerConfig,
 }
@@ -61,7 +58,9 @@ impl Actor for WebSocketListenerActor {
 
     fn started(&mut self, _: &mut Self::Context) {
         let addr = format!("{}:{}", self.config.host, self.config.port);
-        Arbiter::current().spawn(async move {
+
+        actix::spawn(async move {
+            info!("WebSocket listener started on {}", addr);
             match TcpListener::bind(addr.to_owned()).await {
                 Ok(listener) => loop {
                     match listener.accept().await {
@@ -120,7 +119,6 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
         actix::spawn(async move {
             match fut.await {
                 Ok(mut ws) => {
-                    trace!("WebSocket upgrade successful");
                     ws.set_auto_close(false);
                     let (ws_read, ws_write) = ws.split(tokio::io::split);
                     let addr = WebsocketConnectionActor::new(
@@ -130,7 +128,6 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
                         connection_id,
                     )
                     .start();
-                    trace!("WebSocket connection established");
                     listener_addr.do_send(AddWebsocketConnection(addr));
                 }
                 Err(err) => error!("WebSocket upgrade error: {}", err),
@@ -189,12 +186,15 @@ where
 
 impl<R, W> Actor for WebsocketConnectionActor<R, W>
 where
-    R: AsyncRead + Unpin + 'static,
-    W: AsyncWrite + Unpin + 'static,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+        // `ws_tx` and `ws_rx` represent the channels for room actors to communicate with the websocket world.
+        // `msg_tx` and `msg_rx` represent the channels for the websocket world to communicate with the room actors.
+        // 即 `ws_xx` 是 room actor 用来和 websocket actor 通信的 channel，`msg_xx` 是 websocket actor 用来和 room actor 通信的 channel。
         let (msg_tx, ws_rx) = mpsc::channel(1);
         let (ws_tx, mut msg_rx) = mpsc::channel(1);
 
@@ -211,16 +211,24 @@ where
             async move {
                 loop {
                     tokio::select! {
-                        Ok(frame) = addr2.send(ReadFrame) => {
-                            match frame {
-                                Ok(message) => {
-                                    if let Err(e) = msg_tx.send(message).await{
-                                        error!("Failed to send message: {:?}", e);
-                                        break;
+                        Ok(ReadFrameReceiver(read_frame_rx)) = addr2.send(ReadFrame) => {
+                            let msg_tx = msg_tx.clone();
+                            tokio::spawn(async move {
+                                let msg =  match read_frame_rx.await {
+                                        Ok(Ok(msg)) => msg,
+                                        Ok(Err(e)) => {
+                                            error!("Failed to read frame: {:?}", e);
+                                            return;
+                                        },
+                                        Err(e) => {
+                                            error!("Failed to read frame: {:?}", e);
+                                            return;
+                                        }
                                     };
+                                if let Err(e)= msg_tx.send(msg).await{
+                                    error!("Failed to send message to room actors: {:?}", e);
                                 }
-                                Err(_) => break,
-                            }
+                            });
                         }
                         message = msg_rx.recv() => {
                             match message {
@@ -254,82 +262,88 @@ where
 
 impl<R, W> Handler<ReadFrame> for WebsocketConnectionActor<R, W>
 where
-    R: AsyncRead + Unpin + 'static,
-    W: AsyncWrite + Unpin + 'static,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
-    type Result = ResponseActFuture<Self, Result<GenericMessage>>;
+    type Result = ReadFrameReceiver;
 
     fn handle(&mut self, _: ReadFrame, _: &mut Self::Context) -> Self::Result {
         let read_half = Arc::clone(&self.read_half);
-        Box::pin(
-            async move {
-                match read_half
-                    .lock()
-                    .await
-                    .read_frame(&mut |frame| async move {
-                        if frame.opcode == fastwebsockets::OpCode::Close {
-                            return Err(fastwebsockets::WebSocketError::ConnectionClosed);
-                        }
-                        Ok(())
-                    })
-                    .await
-                {
-                    Ok(frame) => match frame.opcode {
-                        fastwebsockets::OpCode::Binary => Ok(GenericMessage::Binary(
-                            Bytes::copy_from_slice(&frame.payload),
-                        )),
-                        fastwebsockets::OpCode::Text => Ok(GenericMessage::Text(
-                            String::from_utf8_lossy(&frame.payload).to_string(),
-                        )),
-                        _ => Err(anyhow!("Invalid opcode")),
-                    },
-                    Err(err) => Err(err.into()),
-                }
-            }
-            .into_actor(self),
-        )
+        let (tx, rx) = oneshot::channel();
+
+        tokio::spawn(async move {
+            let msg = match read_half
+                .lock()
+                .await
+                .read_frame(&mut |frame| async move {
+                    if frame.opcode == fastwebsockets::OpCode::Close {
+                        return Err(fastwebsockets::WebSocketError::ConnectionClosed);
+                    }
+                    Ok(())
+                })
+                .await
+            {
+                Ok(frame) => match frame.opcode {
+                    fastwebsockets::OpCode::Binary => Ok(GenericMessage::Binary(
+                        Bytes::copy_from_slice(&frame.payload),
+                    )),
+                    fastwebsockets::OpCode::Text => Ok(GenericMessage::Text(
+                        String::from_utf8_lossy(&frame.payload).to_string(),
+                    )),
+                    _ => Err(anyhow!("Invalid opcode")),
+                },
+                Err(err) => Err(err.into()),
+            };
+            let _ = tx.send(msg);
+        });
+
+        ReadFrameReceiver(rx)
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<GenericMessage>")]
+#[rtype(result = "ReadFrameReceiver")]
 struct ReadFrame;
+
+#[derive(MessageResponse)]
+struct ReadFrameReceiver(oneshot::Receiver<Result<GenericMessage>>);
 
 impl<R, W> Handler<WriteFrame> for WebsocketConnectionActor<R, W>
 where
-    R: AsyncRead + Unpin + 'static,
-    W: AsyncWrite + Unpin + 'static,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
-    type Result = ResponseActFuture<Self, Result<()>>;
+    type Result = ();
 
     fn handle(&mut self, msg: WriteFrame, _: &mut Self::Context) -> Self::Result {
         let write_half = Arc::clone(&self.write_half);
-        Box::pin(
-            async move {
-                let mut write_half = write_half.lock().await;
-                match msg.opcode {
-                    fastwebsockets::OpCode::Binary => {
-                        write_half
-                            .write_frame(Frame::binary(Payload::Bytes(msg.payload)))
-                            .await?;
+        tokio::spawn(async move {
+            let mut write_half = write_half.lock().await;
+            match msg.opcode {
+                fastwebsockets::OpCode::Binary => {
+                    if let Err(e) = write_half
+                        .write_frame(Frame::binary(Payload::Bytes(msg.payload)))
+                        .await
+                    {
+                        error!("Failed to write frame: {:?}", e);
                     }
-                    fastwebsockets::OpCode::Text => {
-                        write_half
-                            .write_frame(Frame::text(Payload::Bytes(msg.payload)))
-                            .await?;
-                    }
-                    _ => {}
                 }
-                trace!("Frame written");
-                Ok(())
+                fastwebsockets::OpCode::Text => {
+                    if let Err(e) = write_half
+                        .write_frame(Frame::text(Payload::Bytes(msg.payload)))
+                        .await
+                    {
+                        error!("Failed to write frame: {:?}", e);
+                    }
+                }
+                _ => {}
             }
-            .into_actor(self),
-        )
+        });
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<()>")]
+#[rtype(result = "()")]
 struct WriteFrame {
     payload: BytesMut,
     opcode: fastwebsockets::OpCode,
@@ -337,8 +351,8 @@ struct WriteFrame {
 
 impl<R, W> Handler<CloseConnection> for WebsocketConnectionActor<R, W>
 where
-    R: AsyncRead + Unpin + 'static,
-    W: AsyncWrite + Unpin + 'static,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
     type Result = ResponseActFuture<Self, ()>;
 
@@ -369,8 +383,8 @@ struct CloseConnection;
 
 impl<R, W> Handler<StopWebsocketConnection> for WebsocketConnectionActor<R, W>
 where
-    R: AsyncRead + Unpin + 'static,
-    W: AsyncWrite + Unpin + 'static,
+    R: AsyncRead + Unpin + Send + 'static,
+    W: AsyncWrite + Unpin + Send + 'static,
 {
     type Result = ();
 

@@ -1,5 +1,4 @@
 use actix::prelude::*;
-use anyhow::Result;
 use bytes::Bytes;
 use dev::SystemRegistry;
 use loro::LoroDoc;
@@ -98,7 +97,9 @@ impl Handler<MessageChan> for RoomManagerActor {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct MessageChan {
+    /// `rx` receives messages from the client
     pub rx: Receiver<GenericMessage>,
+    /// `tx` sends messages to the client
     pub tx: Sender<GenericMessage>,
     pub room_id: RoomID,
     pub connection_id: ConnectionID,
@@ -252,17 +253,19 @@ impl Handler<SyncDoc> for RoomActor {
 struct SyncDoc(Bytes);
 
 impl Handler<GetSnapshot> for RoomActor {
-    // 这里永远不会返回错误，由于我们无法为 Bytes 实现 MessageResponse trait，所以使用这种处理方式。
-    type Result = Result<Bytes, ()>;
+    type Result = BytesMessage;
 
     fn handle(&mut self, _: GetSnapshot, _: &mut Self::Context) -> Self::Result {
-        Ok(self.doc.export_snapshot().into())
+        BytesMessage(self.doc.export_snapshot().into())
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Bytes,()>")]
+#[rtype(result = "BytesMessage")]
 struct GetSnapshot;
+
+#[derive(MessageResponse)]
+struct BytesMessage(Bytes);
 
 impl Handler<StopRoom> for RoomActor {
     type Result = ();

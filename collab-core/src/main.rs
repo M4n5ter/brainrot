@@ -11,14 +11,14 @@ async fn main() -> Result<()> {
     let subscriber = tracing_subscriber::fmt::Subscriber::builder()
         .with_env_filter(
             tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("loro=info".parse()?)
+                .add_directive("loro=warn".parse()?)
                 .add_directive(SETTINGS.logger().get_level()?.into()),
         )
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
     let listener_rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(1) // Maybe we need more threads in the future. Put `tokio::spawn` to use them.
+        .worker_threads(SETTINGS.listener().threads)
         .enable_all()
         .build()
         .context("Failed to build listener runtime")?;

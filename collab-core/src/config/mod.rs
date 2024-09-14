@@ -30,6 +30,7 @@ impl Settings {
                     .separator("_")
                     .list_separator(" "),
             )
+            .set_default("listener.threads", 4)?
             .build()?;
         settings.try_deserialize()
     }
@@ -69,6 +70,7 @@ impl LoggerConfig {
 pub struct ListenerConfig {
     pub host: String,
     pub port: u16,
+    pub threads: usize,
 }
 
 #[derive(Debug, Clone, Deserialize)]
