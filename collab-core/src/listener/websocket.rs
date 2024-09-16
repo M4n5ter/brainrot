@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
 use actix::prelude::*;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use bytes::BytesMut;
-use dev::{MessageResponse, Registry};
+use dev::Registry;
 use fastwebsockets::{
     upgrade::{is_upgrade_request, upgrade},
     CloseCode, FragmentCollectorRead, Frame, Payload, WebSocketWrite,
@@ -205,55 +205,63 @@ where
             rx: ws_rx,
         });
 
-        let addr = ctx.address();
-        let addr2 = addr.clone();
+        let addr1 = ctx.address();
+        let addr2 = ctx.address();
+        let addr3 = ctx.address();
+
+        let (close_tx1, mut close_rx) = mpsc::channel(1);
+        let close_tx2 = close_tx1.clone();
         ctx.spawn(
             async move {
-                loop {
-                    tokio::select! {
-                        Ok(ReadFrameReceiver(read_frame_rx)) = addr2.send(ReadFrame) => {
-                            let msg_tx = msg_tx.clone();
-                            tokio::spawn(async move {
-                                let msg =  match read_frame_rx.await {
-                                        Ok(Ok(msg)) => msg,
-                                        Ok(Err(e)) => {
-                                            error!("Failed to read frame: {:?}", e);
-                                            return;
-                                        },
-                                        Err(e) => {
-                                            error!("Failed to read frame: {:?}", e);
-                                            return;
-                                        }
-                                    };
-                                if let Err(e)= msg_tx.send(msg).await{
-                                    error!("Failed to send message to room actors: {:?}", e);
-                                }
+                let addr = addr1.clone();
+                while let Ok(read_frame_result) = addr.send(ReadFrame).await {
+                    let msg = match read_frame_result {
+                        Ok(msg) => msg,
+                        Err(e) => {
+                            error!("Failed to read frame: {:?}", e);
+                            break;
+                        }
+                    };
+
+                    if let Err(e) = msg_tx.send(msg).await {
+                        error!("Failed to send message to room actors: {:?}", e);
+                    }
+                }
+                let _ = close_tx1.send(()).await;
+            }
+            .into_actor(self),
+        );
+        ctx.spawn(
+            async move {
+                let addr = addr2.clone();
+                while let Some(message) = msg_rx.recv().await {
+                    match message {
+                        GenericMessage::Binary(_) => {
+                            addr.do_send(WriteFrame {
+                                payload: BytesMut::from(message),
+                                opcode: fastwebsockets::OpCode::Binary,
                             });
                         }
-                        message = msg_rx.recv() => {
-                            match message {
-                                Some(message) => {
-                                    match message {
-                                        GenericMessage::Binary(_) => {
-                                            addr2.do_send(WriteFrame {
-                                                payload: BytesMut::from(message),
-                                                opcode: fastwebsockets::OpCode::Binary,
-                                            });
-                                        }
-                                        GenericMessage::Text(_) => {
-                                            addr2.do_send(WriteFrame {
-                                                payload: BytesMut::from(message),
-                                                opcode: fastwebsockets::OpCode::Text,
-                                            });
-                                        }
-                                    }
-                                }
-                                None => break,
-                            }
+                        GenericMessage::Text(_) => {
+                            addr.do_send(WriteFrame {
+                                payload: BytesMut::from(message),
+                                opcode: fastwebsockets::OpCode::Text,
+                            });
+                        }
+                        GenericMessage::ConnectionClosed => {
+                            break;
                         }
                     }
                 }
-                addr.do_send(CloseConnection);
+                let _ = close_tx2.send(()).await;
+            }
+            .into_actor(self),
+        );
+
+        ctx.spawn(
+            async move {
+                let _ = close_rx.recv().await;
+                addr3.do_send(CloseConnection);
             }
             .into_actor(self),
         );
@@ -265,7 +273,7 @@ where
     R: AsyncRead + Unpin + Send + 'static,
     W: AsyncWrite + Unpin + Send + 'static,
 {
-    type Result = ReadFrameReceiver;
+    type Result = ResponseActFuture<Self, Result<GenericMessage, Error>>;
 
     fn handle(&mut self, _: ReadFrame, _: &mut Self::Context) -> Self::Result {
         let read_half = Arc::clone(&self.read_half);
@@ -290,23 +298,29 @@ where
                     fastwebsockets::OpCode::Text => Ok(GenericMessage::Text(
                         String::from_utf8_lossy(&frame.payload).to_string(),
                     )),
-                    _ => Err(anyhow!("Invalid opcode")),
+                    fastwebsockets::OpCode::Close => Ok(GenericMessage::ConnectionClosed),
+                    _ => Err(anyhow!("Unsupported opcode")),
                 },
                 Err(err) => Err(err.into()),
             };
             let _ = tx.send(msg);
         });
 
-        ReadFrameReceiver(rx)
+        Box::pin(
+            async move {
+                match rx.await {
+                    Ok(msg) => msg,
+                    Err(e) => Err(e.into()),
+                }
+            }
+            .into_actor(self),
+        )
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "ReadFrameReceiver")]
+#[rtype(result = "Result<GenericMessage, Error>")]
 struct ReadFrame;
-
-#[derive(MessageResponse)]
-struct ReadFrameReceiver(oneshot::Receiver<Result<GenericMessage>>);
 
 impl<R, W> Handler<WriteFrame> for WebsocketConnectionActor<R, W>
 where
@@ -339,6 +353,31 @@ where
                 _ => {}
             }
         });
+        // Box::pin(
+        //     async move {
+        //         let mut write_half = write_half.lock().await;
+        //         match msg.opcode {
+        //             fastwebsockets::OpCode::Binary => {
+        //                 if let Err(e) = write_half
+        //                     .write_frame(Frame::binary(Payload::Bytes(msg.payload)))
+        //                     .await
+        //                 {
+        //                     error!("Failed to write frame: {:?}", e);
+        //                 }
+        //             }
+        //             fastwebsockets::OpCode::Text => {
+        //                 if let Err(e) = write_half
+        //                     .write_frame(Frame::text(Payload::Bytes(msg.payload)))
+        //                     .await
+        //                 {
+        //                     error!("Failed to write frame: {:?}", e);
+        //                 }
+        //             }
+        //             _ => {}
+        //         }
+        //     }
+        //     .into_actor(self),
+        // )
     }
 }
 
@@ -366,10 +405,15 @@ where
                 payload.extend_from_slice(&code.to_be_bytes());
                 payload.extend_from_slice(reason);
 
-                addr.do_send(WriteFrame {
-                    payload: Bytes::from(payload).into(),
-                    opcode: fastwebsockets::OpCode::Close,
-                });
+                if let Err(e) = addr
+                    .send(WriteFrame {
+                        payload: Bytes::from(payload).into(),
+                        opcode: fastwebsockets::OpCode::Close,
+                    })
+                    .await
+                {
+                    error!("Failed to send close frame: {:?}", e);
+                };
                 addr.do_send(StopWebsocketConnection);
             }
             .into_actor(self),

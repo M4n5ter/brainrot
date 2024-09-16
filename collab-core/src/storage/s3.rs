@@ -6,7 +6,6 @@ use dev::SystemRegistry;
 use opendal::{
     layers::LoggingLayer, raw::PresignedRequest, services::S3, Entry, Metadata, Operator,
 };
-use tracing::error;
 
 use crate::config::{S3Config, SETTINGS};
 
@@ -96,26 +95,23 @@ pub struct CreateDir {
 }
 
 impl Handler<ReadFile> for S3Actor {
-    type Result = ResponseActFuture<Self, Result<Bytes, String>>;
+    type Result = ResponseActFuture<Self, Result<Bytes, opendal::Error>>;
 
     fn handle(&mut self, msg: ReadFile, _: &mut Self::Context) -> Self::Result {
         let operator = Arc::clone(&self.operator);
         Box::pin(
-            async move { operator.read(&msg.path).await.map_err(|e| e.to_string()) }
+            async move { operator.read(&msg.path).await }
                 .into_actor(self)
                 .map(|res, _, _| match res {
                     Ok(data) => Ok(data.to_bytes()),
-                    Err(e) => {
-                        error!("Failed to read file: {}", e);
-                        Err(e)
-                    }
+                    Err(e) => Err(e),
                 }),
         )
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Bytes, String>")]
+#[rtype(result = "Result<Bytes, opendal::Error>")]
 pub struct ReadFile {
     pub path: String,
 }

@@ -8,3 +8,6 @@ target/
 # files
 .DS_Store
 collab-core.toml
+flamegraph.svg
+perf.data
+perf.data.old

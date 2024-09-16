@@ -11,6 +11,7 @@ pub mod storage;
 pub enum GenericMessage {
     Text(String),
     Binary(Bytes),
+    ConnectionClosed,
 }
 
 impl From<String> for GenericMessage {
@@ -36,6 +37,7 @@ impl From<GenericMessage> for String {
         match msg {
             GenericMessage::Text(s) => s,
             GenericMessage::Binary(v) => String::from_utf8_lossy(&v).to_string(),
+            GenericMessage::ConnectionClosed => "Connection closed".to_string(),
         }
     }
 }
@@ -45,6 +47,7 @@ impl From<GenericMessage> for Bytes {
         match msg {
             GenericMessage::Text(s) => Bytes::from(s),
             GenericMessage::Binary(v) => v,
+            GenericMessage::ConnectionClosed => Bytes::from("Connection closed"),
         }
     }
 }
@@ -62,6 +65,7 @@ impl Deref for GenericMessage {
         match self {
             GenericMessage::Text(s) => s.as_bytes(),
             GenericMessage::Binary(v) => v.as_ref(),
+            GenericMessage::ConnectionClosed => b"Connection closed",
         }
     }
 }

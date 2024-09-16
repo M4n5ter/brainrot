@@ -4,9 +4,13 @@ use dev::SystemRegistry;
 use loro::LoroDoc;
 use rustc_hash::FxHashMap;
 use tokio::sync::mpsc::{Receiver, Sender};
-use tracing::error;
+use tracing::{error, trace};
 
-use crate::{storage::s3::S3Actor, GenericMessage};
+use crate::{
+    storage::s3::{ReadFile, S3Actor, WriteFile},
+    storage::StorageErrorKind,
+    GenericMessage,
+};
 
 /// RoomManagerActor 是一个系统级别的Actor，用于管理所有的房间
 ///
@@ -59,7 +63,7 @@ impl Handler<MessageChan> for RoomManagerActor {
                         .send(JoinRoom {
                             room_id: mc.room_id.clone(),
                             connection_id: mc.connection_id.clone(),
-                            connection,
+                            connection: connection.clone(),
                         })
                         .await
                     {
@@ -72,19 +76,34 @@ impl Handler<MessageChan> for RoomManagerActor {
                 };
 
                 loop {
-                    tokio::select! {
-                        Some(msg) = mc.rx.recv() => {
+                    let Some(msg) = mc.rx.recv().await else {
+                        room_manager.do_send(LeaveRoom {
+                            room_id: mc.room_id,
+                            connection_id: mc.connection_id,
+                        });
+                        break;
+                    };
+                    match msg {
+                        GenericMessage::ConnectionClosed => {
+                            connection
+                                .send(SendMessage(GenericMessage::ConnectionClosed))
+                                .await
+                                .unwrap();
+                            trace!(
+                                "room {}'s connection {} is closed",
+                                mc.room_id,
+                                mc.connection_id
+                            );
+                            room.do_send(RemoveConnection {
+                                id: mc.connection_id.clone(),
+                            });
+                            break;
+                        }
+                        _ => {
                             room.do_send(BroadcastMessage {
                                 message: msg,
                                 sender_id: mc.connection_id.clone(),
                             });
-                        }
-                        else => {
-                            room_manager.do_send(LeaveRoom {
-                                room_id: mc.room_id.clone(),
-                                connection_id: mc.connection_id.clone(),
-                            });
-                            break;
                         }
                     }
                 }
@@ -124,10 +143,11 @@ impl Handler<JoinRoom> for RoomManagerActor {
         let room = self
             .rooms
             .entry(msg.room_id.clone())
-            .or_insert_with(|| RoomActor::new().start())
+            .or_insert_with(|| RoomActor::new(msg.room_id, msg.connection_id.clone()).start())
             .clone();
+
         room.do_send(AddConnection {
-            id: msg.connection_id.clone(),
+            id: msg.connection_id,
             connection: msg.connection,
         });
         room
@@ -162,22 +182,36 @@ struct LeaveRoom {
 }
 
 struct RoomActor {
+    id: RoomID,
+    owner: ConnectionID,
     connections: FxHashMap<ConnectionID, Addr<ConnectionActor>>,
-    doc: LoroDoc,
+    doc: Option<LoroDoc>,
+    doc_path: String,
 }
 type ConnectionID = String;
 
 impl RoomActor {
-    pub fn new() -> Self {
+    pub fn new(id: String, owner: ConnectionID) -> Self {
         RoomActor {
+            id: id.clone(),
+            owner: owner.clone(),
             connections: FxHashMap::default(),
-            doc: LoroDoc::new(),
+            doc: None,
+            doc_path: format!("{}/collab_room/{}/doc", owner, id),
         }
     }
 }
 
 impl Actor for RoomActor {
     type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        ctx.notify(SyncFromRemote);
+    }
+
+    fn stopped(&mut self, _: &mut Self::Context) {
+        trace!("{}'s room {} is stopped", self.owner, self.id);
+    }
 }
 
 impl Handler<BroadcastMessage> for RoomActor {
@@ -206,9 +240,7 @@ impl Handler<AddConnection> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: AddConnection, _: &mut Self::Context) {
-        msg.connection.do_send(SendMessage(GenericMessage::from(
-            self.doc.export_snapshot(),
-        )));
+        trace!("Adding connection {} to room {}", msg.id, self.id);
         self.connections.insert(msg.id, msg.connection);
     }
 }
@@ -225,9 +257,27 @@ impl Handler<RemoveConnection> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: RemoveConnection, ctx: &mut Self::Context) {
-        self.connections.remove(&msg.id);
-        if self.connections.is_empty() {
-            ctx.notify(StopRoom);
+        trace!("Removing connection {} from room {}", msg.id, self.id);
+
+        let addr = ctx.address();
+        if self.connections.len() == 1 {
+            ctx.spawn(
+                async move {
+                    RoomManagerActor::from_registry().do_send(RemoveRoom(msg.id));
+                    addr.do_send(ClearConnections);
+
+                    if let Err(e) = addr.send(SyncToRemote).await {
+                        error!("Failed to sync to remote: {:?}", e);
+                    }
+
+                    if let Err(e) = addr.send(StopRoom).await {
+                        error!("Failed to stop room: {:?}", e);
+                    };
+                }
+                .into_actor(self),
+            );
+        } else {
+            self.connections.remove(&msg.id);
         }
     }
 }
@@ -238,13 +288,30 @@ struct RemoveConnection {
     id: ConnectionID,
 }
 
+impl Handler<ClearConnections> for RoomActor {
+    type Result = ();
+
+    fn handle(&mut self, _: ClearConnections, _: &mut Self::Context) {
+        self.connections.clear();
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct ClearConnections;
+
 impl Handler<SyncDoc> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: SyncDoc, _: &mut Self::Context) {
-        if let Err(e) = self.doc.import(&msg.0) {
+        if self.doc.is_none() {
+            self.doc = Some(LoroDoc::new());
+        }
+
+        // unwrap is safe here because we just checked if self.doc is None
+        if let Err(e) = self.doc.as_mut().unwrap().import(&msg.0) {
             error!("Failed to import doc: {:?}", e);
-        };
+        }
     }
 }
 
@@ -252,16 +319,131 @@ impl Handler<SyncDoc> for RoomActor {
 #[rtype(result = "()")]
 struct SyncDoc(Bytes);
 
-impl Handler<GetSnapshot> for RoomActor {
-    type Result = BytesMessage;
+impl Handler<SyncFromRemote> for RoomActor {
+    type Result = ResponseActFuture<Self, ()>;
 
-    fn handle(&mut self, _: GetSnapshot, _: &mut Self::Context) -> Self::Result {
-        BytesMessage(self.doc.export_snapshot().into())
+    fn handle(&mut self, _: SyncFromRemote, ctx: &mut Self::Context) -> Self::Result {
+        if self.doc.is_some() {
+            return Box::pin(async {}.into_actor(self));
+        }
+
+        trace!("Syncing {}'s room {} from remote", self.owner, self.id);
+
+        let addr = ctx.address();
+        let s3 = S3Actor::from_registry();
+        let doc_path = self.doc_path.clone();
+        Box::pin(
+            async move {
+                match s3.send(ReadFile { path: doc_path }).await {
+                    Ok(Ok(data)) => {
+                        if let Err(e) = addr.send(SetDoc(data.clone())).await {
+                            error!("Failed to set doc: {:?}", e);
+                        }
+
+                        addr.do_send(BroadcastMessage {
+                            message: GenericMessage::Binary(data),
+                            sender_id: "".to_string(),
+                        });
+                    }
+                    Ok(Err(e)) => {
+                        if e.kind() == StorageErrorKind::NotFound {
+                            return;
+                        }
+                        error!("Failed to read file because of opendal Error: {:?}", e);
+                    }
+                    Err(e) => {
+                        error!("Failed to read file because of MailboxError: {:?}", e);
+                    }
+                }
+            }
+            .into_actor(self),
+        )
     }
 }
 
 #[derive(Message)]
-#[rtype(result = "BytesMessage")]
+#[rtype(result = "()")]
+struct SyncFromRemote;
+
+impl Handler<SyncToRemote> for RoomActor {
+    type Result = ResponseActFuture<Self, ()>;
+
+    fn handle(&mut self, _: SyncToRemote, ctx: &mut Self::Context) -> Self::Result {
+        trace!("Syncing {}'s room {} to remote", self.owner, self.id);
+
+        let owner = self.owner.clone();
+        let room_id = self.id.clone();
+        let addr = ctx.address();
+        let s3 = S3Actor::from_registry();
+        let doc_path = self.doc_path.clone();
+        Box::pin(
+            async move {
+                trace!("Getting {}'s{} room snapshot", owner, room_id);
+                let doc = match addr.send(GetSnapshot).await {
+                    Ok(Ok(doc)) => doc.0,
+                    Ok(Err(e)) => {
+                        error!("Failed to get snapshot: {:?}", e);
+                        return;
+                    }
+                    Err(e) => {
+                        error!("Failed to get snapshot: {:?}", e);
+                        return;
+                    }
+                };
+
+                trace!("Writing {}'s{} room snapshot to S3", owner, room_id);
+                if let Err(e) = s3
+                    .send(WriteFile {
+                        path: doc_path,
+                        data: doc,
+                    })
+                    .await
+                {
+                    error!("Failed to write file: {:?}", e);
+                };
+            }
+            .into_actor(self),
+        )
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct SyncToRemote;
+
+impl Handler<SetDoc> for RoomActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: SetDoc, _: &mut Self::Context) {
+        if self.doc.is_none() {
+            self.doc = Some(LoroDoc::new());
+        }
+
+        // unwrap is safe here because we just checked if self.doc is None
+        if let Err(e) = self.doc.as_mut().unwrap().import(&msg.0) {
+            error!("Failed to import snapshot: {:?}", e);
+        }
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+struct SetDoc(Bytes);
+
+impl Handler<GetSnapshot> for RoomActor {
+    type Result = Result<BytesMessage, String>;
+
+    fn handle(&mut self, _: GetSnapshot, _: &mut Self::Context) -> Self::Result {
+        if let Some(doc) = &self.doc {
+            Ok(BytesMessage(doc.export_snapshot().into()))
+        } else {
+            Err("Doc is not initialized".to_string())
+        }
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<BytesMessage, String>")]
 struct GetSnapshot;
 
 #[derive(MessageResponse)]
@@ -270,8 +452,7 @@ struct BytesMessage(Bytes);
 impl Handler<StopRoom> for RoomActor {
     type Result = ();
 
-    fn handle(&mut self, _: StopRoom, ctx: &mut Self::Context) {
-        let s3 = S3Actor::from_registry();
+    fn handle(&mut self, _: StopRoom, ctx: &mut Self::Context) -> Self::Result {
         ctx.stop();
     }
 }
@@ -330,7 +511,6 @@ impl Handler<StopConnection> for ConnectionActor {
     type Result = ();
 
     fn handle(&mut self, _: StopConnection, ctx: &mut Self::Context) {
-        // TODO: 有需要的话需要进行资源清理
         ctx.stop();
     }
 }
