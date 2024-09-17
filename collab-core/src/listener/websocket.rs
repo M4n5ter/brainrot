@@ -6,7 +6,7 @@ use bytes::BytesMut;
 use dev::Registry;
 use fastwebsockets::{
     upgrade::{is_upgrade_request, upgrade},
-    CloseCode, FragmentCollectorRead, Frame, Payload, WebSocketWrite,
+    CloseCode, FragmentCollectorRead, Frame, Payload, WebSocketError, WebSocketWrite,
 };
 use http_body_util::Empty;
 use hyper::{
@@ -17,12 +17,13 @@ use hyper::{
     Request, Response,
 };
 use hyper_util::rt::TokioIo;
+use rustc_hash::FxHashMap;
 use tokio::{
     io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf},
     net::TcpListener,
     sync::{mpsc, oneshot, Mutex},
 };
-use tracing::{error, info};
+use tracing::{error, info, trace};
 
 use crate::{
     config::{ListenerConfig, SETTINGS},
@@ -34,14 +35,14 @@ type WebSocketConnectionAddr =
     Addr<WebsocketConnectionActor<ReadHalf<TokioIo<Upgraded>>, WriteHalf<TokioIo<Upgraded>>>>;
 
 pub struct WebSocketListenerActor {
-    connections: Vec<WebSocketConnectionAddr>,
+    connections: FxHashMap<String, WebSocketConnectionAddr>,
     config: ListenerConfig,
 }
 
 impl WebSocketListenerActor {
     pub fn new(config: ListenerConfig) -> Self {
         Self {
-            connections: Vec::new(),
+            connections: Default::default(),
             config,
         }
     }
@@ -125,10 +126,13 @@ async fn handle_connection(mut req: Request<Incoming>) -> Result<Response<Empty<
                         FragmentCollectorRead::new(ws_read),
                         ws_write,
                         room_id,
-                        connection_id,
+                        connection_id.clone(),
                     )
                     .start();
-                    listener_addr.do_send(AddWebsocketConnection(addr));
+                    listener_addr.do_send(AddWebsocketConnection {
+                        id: connection_id,
+                        addr,
+                    });
                 }
                 Err(err) => error!("WebSocket upgrade error: {}", err),
             }
@@ -145,13 +149,28 @@ impl Handler<AddWebsocketConnection> for WebSocketListenerActor {
     type Result = ();
 
     fn handle(&mut self, msg: AddWebsocketConnection, _: &mut Self::Context) {
-        self.connections.push(msg.0);
+        self.connections.insert(msg.id, msg.addr);
     }
 }
 
 #[derive(Message)]
 #[rtype(result = "()")]
-pub struct AddWebsocketConnection(WebSocketConnectionAddr);
+pub struct AddWebsocketConnection {
+    id: String,
+    addr: WebSocketConnectionAddr,
+}
+
+impl Handler<RemoveWebsocketConnection> for WebSocketListenerActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: RemoveWebsocketConnection, _: &mut Self::Context) {
+        self.connections.remove(&msg.0);
+    }
+}
+
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct RemoveWebsocketConnection(String);
 
 struct WebsocketConnectionActor<R, W>
 where
@@ -218,8 +237,20 @@ where
                     let msg = match read_frame_result {
                         Ok(msg) => msg,
                         Err(e) => {
-                            error!("Failed to read frame: {:?}", e);
-                            break;
+                            // https://github.com/denoland/fastwebsockets/issues/64#issuecomment-2024122393
+                            // ReadFrame 的消息处理函数中 read_frame() 不是 cancel safe 的。
+                            // 当客户端浏览器刷新时，ctx 会因为 CloseConnection 的消息处理函数最终被 stop，此处的错误为 Unexpected EOF，暂时来看不需要处理。
+                            match e.downcast::<WebSocketError>() {
+                                Ok(WebSocketError::UnexpectedEOF) => break,
+                                Ok(e) => {
+                                    error!("Failed to read frame: {:?}", e);
+                                    break;
+                                }
+                                Err(e) => {
+                                    error!("Failed to read frame: {:?}", e);
+                                    break;
+                                }
+                            };
                         }
                     };
 
@@ -266,6 +297,11 @@ where
             .into_actor(self),
         );
     }
+
+    fn stopped(&mut self, _: &mut Self::Context) {
+        WebSocketListenerActor::from_registry()
+            .do_send(RemoveWebsocketConnection(self.connection_id.clone()));
+    }
 }
 
 impl<R, W> Handler<ReadFrame> for WebsocketConnectionActor<R, W>
@@ -298,7 +334,10 @@ where
                     fastwebsockets::OpCode::Text => Ok(GenericMessage::Text(
                         String::from_utf8_lossy(&frame.payload).to_string(),
                     )),
-                    fastwebsockets::OpCode::Close => Ok(GenericMessage::ConnectionClosed),
+                    fastwebsockets::OpCode::Close => {
+                        trace!("Received close frame");
+                        Ok(GenericMessage::ConnectionClosed)
+                    }
                     _ => Err(anyhow!("Unsupported opcode")),
                 },
                 Err(err) => Err(err.into()),
@@ -350,34 +389,19 @@ where
                         error!("Failed to write frame: {:?}", e);
                     }
                 }
-                _ => {}
+                fastwebsockets::OpCode::Close => {
+                    if let Err(e) = write_half
+                        .write_frame(Frame::close(CloseCode::Normal.into(), &msg.payload))
+                        .await
+                    {
+                        error!("Failed to write frame: {:?}", e);
+                    }
+                }
+                _ => {
+                    error!("Write frame: Unsupported opcode");
+                }
             }
         });
-        // Box::pin(
-        //     async move {
-        //         let mut write_half = write_half.lock().await;
-        //         match msg.opcode {
-        //             fastwebsockets::OpCode::Binary => {
-        //                 if let Err(e) = write_half
-        //                     .write_frame(Frame::binary(Payload::Bytes(msg.payload)))
-        //                     .await
-        //                 {
-        //                     error!("Failed to write frame: {:?}", e);
-        //                 }
-        //             }
-        //             fastwebsockets::OpCode::Text => {
-        //                 if let Err(e) = write_half
-        //                     .write_frame(Frame::text(Payload::Bytes(msg.payload)))
-        //                     .await
-        //                 {
-        //                     error!("Failed to write frame: {:?}", e);
-        //                 }
-        //             }
-        //             _ => {}
-        //         }
-        //     }
-        //     .into_actor(self),
-        // )
     }
 }
 
@@ -399,15 +423,11 @@ where
         let addr = ctx.address();
         Box::pin(
             async move {
-                let code: u16 = CloseCode::Normal.into();
-                let reason = "server closed this connection".as_bytes();
-                let mut payload = Vec::with_capacity(2 + reason.len());
-                payload.extend_from_slice(&code.to_be_bytes());
-                payload.extend_from_slice(reason);
+                let reason = "server closed this connection";
 
                 if let Err(e) = addr
                     .send(WriteFrame {
-                        payload: Bytes::from(payload).into(),
+                        payload: reason.into(),
                         opcode: fastwebsockets::OpCode::Close,
                     })
                     .await

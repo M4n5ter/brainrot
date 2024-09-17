@@ -7,8 +7,11 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tracing::{error, trace};
 
 use crate::{
-    storage::s3::{ReadFile, S3Actor, WriteFile},
-    storage::StorageErrorKind,
+    room::MessageWithOwner,
+    storage::{
+        s3::{ReadFile, S3Actor, WriteFile},
+        StorageErrorKind,
+    },
     GenericMessage,
 };
 
@@ -54,7 +57,7 @@ impl Supervised for RoomManagerActor {}
 impl Handler<MessageChan> for RoomManagerActor {
     type Result = ();
     fn handle(&mut self, mut mc: MessageChan, ctx: &mut Self::Context) {
-        let connection = ConnectionActor::new(mc.tx).start();
+        let connection = ConnectionActor::new(mc.connection_id.clone(), mc.tx).start();
         ctx.spawn(
             async move {
                 let room_manager = RoomManagerActor::from_registry();
@@ -89,13 +92,10 @@ impl Handler<MessageChan> for RoomManagerActor {
                                 .send(SendMessage(GenericMessage::ConnectionClosed))
                                 .await
                                 .unwrap();
-                            trace!(
-                                "room {}'s connection {} is closed",
-                                mc.room_id,
-                                mc.connection_id
-                            );
-                            room.do_send(RemoveConnection {
-                                id: mc.connection_id.clone(),
+
+                            room_manager.do_send(LeaveRoom {
+                                room_id: mc.room_id,
+                                connection_id: mc.connection_id,
                             });
                             break;
                         }
@@ -211,6 +211,8 @@ impl Actor for RoomActor {
 
     fn stopped(&mut self, _: &mut Self::Context) {
         trace!("{}'s room {} is stopped", self.owner, self.id);
+
+        RoomManagerActor::from_registry().do_send(RemoveRoom(self.id.clone()));
     }
 }
 
@@ -221,6 +223,9 @@ impl Handler<BroadcastMessage> for RoomActor {
         let sender_id = msg.sender_id;
         let msg: Bytes = msg.message.into();
         ctx.notify(SyncDoc(msg.clone()));
+
+        let msg = msg.set_owner(&sender_id);
+
         for (id, conn) in self.connections.iter_mut() {
             if id != &sender_id {
                 conn.do_send(SendMessage(msg.clone().into()));
@@ -241,6 +246,16 @@ impl Handler<AddConnection> for RoomActor {
 
     fn handle(&mut self, msg: AddConnection, _: &mut Self::Context) {
         trace!("Adding connection {} to room {}", msg.id, self.id);
+
+        if self.doc.is_some() {
+            msg.connection.do_send(SendMessage(
+                // unwrap is safe here because we just checked.
+                Bytes::from(self.doc.as_ref().unwrap().export_snapshot())
+                    .set_owner("")
+                    .into(),
+            ));
+        }
+
         self.connections.insert(msg.id, msg.connection);
     }
 }
@@ -474,17 +489,22 @@ impl Handler<CheckRoomEmpty> for RoomActor {
 struct CheckRoomEmpty;
 
 struct ConnectionActor {
+    id: ConnectionID,
     tx: Sender<GenericMessage>,
 }
 
 impl ConnectionActor {
-    pub fn new(tx: Sender<GenericMessage>) -> Self {
-        ConnectionActor { tx }
+    pub fn new(id: ConnectionID, tx: Sender<GenericMessage>) -> Self {
+        ConnectionActor { id, tx }
     }
 }
 
 impl Actor for ConnectionActor {
     type Context = Context<Self>;
+
+    fn stopped(&mut self, _: &mut Self::Context) {
+        trace!("Connection {} is stopped", self.id);
+    }
 }
 
 impl Handler<SendMessage> for ConnectionActor {
